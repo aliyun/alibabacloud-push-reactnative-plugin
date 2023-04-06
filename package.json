@@ -41,15 +41,16 @@
     "ios",
     "android"
   ],
-  "repository": "",
-  "author": "",
+  "repository": "https://github.com/aliyun/alibabacloud-push-reactnative-plugin",
+  "author": "aliyun",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/wangyun137/aliyun-react-native-push/issues"
+    "url": "https://github.com/aliyun/alibabacloud-push-reactnative-plugin/issues"
   },
-  "homepage": "https://github.com/wangyun137/aliyun-react-native-push#readme",
+  "homepage": "https://github.com/aliyun/alibabacloud-push-reactnative-plugin#readme",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
     "@commitlint/config-conventional": "^17.0.2",
