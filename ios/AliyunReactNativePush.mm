@@ -152,9 +152,9 @@ RCT_EXPORT_MODULE()
     NSInteger badge = [[aps valueForKey:@"badge"] integerValue];
     // 播放声音
     NSString *sound = [aps valueForKey:@"sound"];
-    // 取得通知自定义字段内容，例：获取key为"Extras"的内容
-    NSString *extras = [userInfo valueForKey:@"Extras"]; //服务端中Extras字段，key是自己定义的
-    PushLogD(@"content = [%@], badge = [%ld], sound = [%@], Extras = [%@]", content, (long)badge, sound, extras);
+    // 取得通知自定义字段内容，例：获取key为"extras"的内容
+    NSString *extras = [userInfo valueForKey:@"extras"]; //服务端中extras字段，key是自己定义的
+    PushLogD(@"content = [%@], badge = [%ld], sound = [%@], extras = [%@]", content, (long)badge, sound, extras);
     
     [CloudPushSDK sendNotificationAck:userInfo];
     
@@ -214,7 +214,7 @@ RCT_EXPORT_MODULE()
     // 角标
     int badge = [content.badge intValue];
     // 取得通知自定义字段内容，例：获取key为"Extras"的内容
-    NSString *extras = [userInfo valueForKey:@"Extras"];
+    NSString *extras = [userInfo valueForKey:@"extras"];
     
     // 通知角标数清0
     [UIApplication sharedApplication].applicationIconBadgeNumber = 0;
