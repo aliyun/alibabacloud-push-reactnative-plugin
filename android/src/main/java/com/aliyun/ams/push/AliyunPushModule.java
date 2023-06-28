@@ -85,7 +85,6 @@ public class AliyunPushModule extends ReactContextBaseJavaModule {
 
 			@Override
 			public void onFailed(String errorCode, String errorMessage) {
-				Log.d("wy", "initPushFailed: " + errorMessage);
 				WritableMap result = new WritableNativeMap();
 				result.putString(CODE_KEY, errorCode);
 				result.putString(ERROR_MSG_KEY, errorMessage);
