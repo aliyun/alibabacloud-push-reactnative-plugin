@@ -75,6 +75,8 @@ public class AliyunPushMessageReceiver extends MessageReceiver {
 				writableMap.putString(entry.getKey(), entry.getValue());
 			}
 		}
+		writableMap.putString("title", title);
+		writableMap.putString("summary", summary);
 		AliyunPushEventSender.sendEvent("onNotification", writableMap);
 	}
 
