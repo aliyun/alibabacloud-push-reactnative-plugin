@@ -144,26 +144,15 @@ RCT_EXPORT_MODULE()
     NSDictionary *userInfo = notification.userInfo[@"notification"];
     AliyunPushRemoteNotificationCallback completionHandler = notification.userInfo[@"completionHandler"];
     
-    // 取得APNS通知内容
-    NSDictionary *aps = [userInfo valueForKey:@"aps"];
-    // 内容
-    NSString *content = [aps valueForKey:@"alert"];
-    // badge数量
-    NSInteger badge = [[aps valueForKey:@"badge"] integerValue];
-    // 播放声音
-    NSString *sound = [aps valueForKey:@"sound"];
-    // 取得通知自定义字段内容，例：获取key为"extras"的内容
-    NSString *extras = [userInfo valueForKey:@"extras"]; //服务端中extras字段，key是自己定义的
-    PushLogD(@"content = [%@], badge = [%ld], sound = [%@], extras = [%@]", content, (long)badge, sound, extras);
+   //服务端中extras字段，key是自己定义的
+    PushLogD(@"onNotification userInfo =%@", userInfo);
     
     [CloudPushSDK sendNotificationAck:userInfo];
-    
-    NSMutableDictionary *dic = [NSMutableDictionary dictionary];
-    [dic setValue:content forKey:@"content"];
-    [dic setValue:@(badge) forKey:@"badge"];
-    [dic setValue:sound forKey:@"sound"];
-    [dic setValue:extras forKey:@"extras"];
-    [self sendEventWithName:@"AliyunPush_onNotification" body:dic];
+    [self sendEventWithName:@"AliyunPush_onNotification" body:userInfo];
+
+    if (completionHandler != nil) {
+        completionHandler(UIBackgroundFetchResultNewData);
+    }
 }
 
 - (void) handleForegroundReceiveNotification: (NSNotification *) notification {
@@ -171,12 +160,16 @@ RCT_EXPORT_MODULE()
     AliyunPushForeReceiveNoticeCallback completionHandler = notification.userInfo[@"completionHandler"];
     if(_showNoticeWhenForeground) {
         // 通知弹出，且带有声音、内容和角标
-        completionHandler(UNNotificationPresentationOptionSound | UNNotificationPresentationOptionAlert | UNNotificationPresentationOptionBadge);
+        if (completionHandler != nil) {
+            completionHandler(UNNotificationPresentationOptionSound | UNNotificationPresentationOptionAlert | UNNotificationPresentationOptionBadge);
+        }
     } else {
         // 处理iOS 10通知，并上报通知打开回执
         [self handleiOS10Notification:unnotification];
         // 通知不弹出
-        completionHandler(UNNotificationPresentationOptionNone);
+        if (completionHandler != nil) {
+            completionHandler(UNNotificationPresentationOptionNone);
+        }
     }
 }
 
@@ -186,6 +179,7 @@ RCT_EXPORT_MODULE()
     // 点击通知打开
     if ([userAction isEqualToString:UNNotificationDefaultActionIdentifier]) {
         [CloudPushSDK sendNotificationAck:response.notification.request.content.userInfo];
+        NSLog(@"###### AliyunPush_onNotificationOpened");
         [self sendEventWithName:@"AliyunPush_onNotificationOpened" body:response.notification.request.content.userInfo];
     }
     // 通知dismiss，category创建时传入UNNotificationCategoryOptionCustomDismissAction才可以触发
@@ -196,25 +190,15 @@ RCT_EXPORT_MODULE()
     }
     
     AliyunPushNotificationActionCallback completionHandler = notification.userInfo[@"completionHandler"];
-    completionHandler();
+    if (completionHandler != nil) {
+        completionHandler();
+    }
 }
 
 - (void)handleiOS10Notification:(UNNotification *)notification {
     UNNotificationRequest *request = notification.request;
     UNNotificationContent *content = request.content;
     NSDictionary *userInfo = content.userInfo;
-    // 通知时间
-    NSDate *noticeDate = notification.date;
-    // 标题
-    NSString *title = content.title;
-    // 副标题
-    NSString *subtitle = content.subtitle;
-    // 内容
-    NSString *body = content.body;
-    // 角标
-    int badge = [content.badge intValue];
-    // 取得通知自定义字段内容，例：获取key为"Extras"的内容
-    NSString *extras = [userInfo valueForKey:@"extras"];
     
     // 通知角标数清0
     [UIApplication sharedApplication].applicationIconBadgeNumber = 0;
@@ -230,17 +214,9 @@ RCT_EXPORT_MODULE()
     
     // 通知打开回执上报
     [CloudPushSDK sendNotificationAck:userInfo];
-    PushLogD(@"Notification, date: %@, title: %@, subtitle: %@, body: %@, badge: %d, extras: %@.", noticeDate, title, subtitle, body, badge, extras);
+    PushLogD(@"onNotification userInfo = %@", userInfo);
     
-    NSMutableDictionary *dic = [NSMutableDictionary dictionary];
-    [dic setValue:noticeDate.description forKey:@"date"];
-    [dic setValue:title forKey:@"title"];
-    [dic setValue:subtitle forKey:@"subtitle"];
-    [dic setValue:body forKey:@"body"];
-    [dic setValue:@(badge) forKey:@"badge"];
-    [dic setValue:extras forKey:@"extras"];
-    
-    [self sendEventWithName:@"AliyunPush_onNotification" body:dic];
+    [self sendEventWithName:@"AliyunPush_onNotification" body:userInfo];
 }
 
 

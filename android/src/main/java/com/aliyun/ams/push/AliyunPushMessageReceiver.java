@@ -14,6 +14,8 @@ import android.content.Context;
 import androidx.core.app.NotificationCompat;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeMap;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * @author wangyun
@@ -47,9 +49,6 @@ public class AliyunPushMessageReceiver extends MessageReceiver {
 
 	@Override
 	public boolean showNotificationNow(Context context, Map<String, String> map) {
-		AliyunPushLog.e(REC_TAG, "foreground " + com.alibaba.sdk.android.push.notification.e.a(context));
-		AliyunPushLog.e(REC_TAG,
-			"show when foreground " + com.alibaba.sdk.android.push.notification.d.a(map));
 		for (Map.Entry<String, String> entry : map.entrySet()) {
 			AliyunPushLog.e(REC_TAG, "key " + entry.getKey() + " value " + entry.getValue());
 		}
@@ -70,13 +69,19 @@ public class AliyunPushMessageReceiver extends MessageReceiver {
 							   Map<String, String> extraMap) {
 
 		WritableMap writableMap = new WritableNativeMap();
-		if (extraMap != null && !extraMap.isEmpty()) {
-			for (Entry<String, String> entry: extraMap.entrySet()) {
-				writableMap.putString(entry.getKey(), entry.getValue());
-			}
-		}
 		writableMap.putString("title", title);
 		writableMap.putString("summary", summary);
+		try {
+			if (extraMap != null && !extraMap.isEmpty()) {
+				JSONObject extra = new JSONObject();
+				for (Entry<String, String> entry: extraMap.entrySet()) {
+					extra.put(entry.getKey(), entry.getValue());
+				}
+				writableMap.putString("extra", extra.toString());
+			}
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
 		AliyunPushEventSender.sendEvent("onNotification", writableMap);
 	}
 
@@ -141,7 +146,7 @@ public class AliyunPushMessageReceiver extends MessageReceiver {
 		WritableMap writableMap = new WritableNativeMap();
 		writableMap.putString("title", title);
 		writableMap.putString("summary", summary);
-		writableMap.putString("extraMap", extraMap);
+		writableMap.putString("extra", extraMap);
 		AliyunPushEventSender.sendEvent("onNotificationOpened", writableMap);
 	}
 
@@ -173,7 +178,7 @@ public class AliyunPushMessageReceiver extends MessageReceiver {
 		WritableMap writableMap = new WritableNativeMap();
 		writableMap.putString("title", title);
 		writableMap.putString("summary", summary);
-		writableMap.putString("extraMap", extraMap);
+		writableMap.putString("extra", extraMap);
 		AliyunPushEventSender.sendEvent("onNotificationClickedWithNoAction", writableMap);
 	}
 }
