@@ -80,8 +80,15 @@ const HomeScreen = ({ navigation }) => {
     navigation.navigate('IOS');
   };
 
+  const closeCCPChannel = () => {
+    AliyunPush.closeIOSCCPChannel();
+  }
+
   return (
     <SafeAreaView style={styles.container}>
+      {Platform.OS === 'ios' && <View style={styles.list}>
+        <Button title="关闭iOS消息通道(必须在初始化之前调用)" onPress={closeCCPChannel} />
+      </View>}
       <View style={styles.list}>
         <Button title="初始化AliyunPush" onPress={initAliyunPush} />
       </View>

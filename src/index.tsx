@@ -69,6 +69,21 @@ export function initPush(
   }
 }
 
+/**一定要在initPush之前调用 */
+export function closeIOSCCPChannel(): Promise<PushResult> {
+  if (Platform.OS !== 'ios') {
+    let result = {
+      code: kAliyunPushOnlyIOS,
+      errorMsg: 'Only Support iOS',
+    };
+    return new Promise((resolve, _) => {
+      resolve(result);
+    });
+  }
+
+  return AliyunPush.closeCCPChannel();
+}
+
 export function initAndroidThirdPush(): Promise<PushResult> {
   if (Platform.OS === 'ios') {
     let result = {

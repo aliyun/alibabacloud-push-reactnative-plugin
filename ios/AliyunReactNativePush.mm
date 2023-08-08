@@ -334,6 +334,13 @@ RCT_REMAP_METHOD(initPush,
     [self sendEventWithName:@"AliyunPush_onMessage" body:dic];
 }
 
+RCT_REMAP_METHOD(closeCCPChannel,
+                 closeCCPWithResolver:(RCTPromiseResolveBlock)resolve
+                 closeCCPWithRejecter:(RCTPromiseRejectBlock)reject){
+    [CloudPushSDK closeCCPChannel];
+    resolve(@{KEY_CODE: CODE_SUCCESS});
+}
+
 RCT_REMAP_METHOD(getDeviceId,
                  getDeviceIdWithResolver:(RCTPromiseResolveBlock)resolve
                  getDeviceIdWithRejecter:(RCTPromiseRejectBlock)reject)

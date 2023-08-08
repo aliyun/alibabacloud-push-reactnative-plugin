@@ -380,7 +380,7 @@ AliyunPush.addMessageCallback(event => {
 + `code`: 错误码
 + `errorMsg`: 错误信息
 
-代码实例:
+代码示例:
 
 ```javascript
 AliyunPush.bindAccount(account).then(result => {
