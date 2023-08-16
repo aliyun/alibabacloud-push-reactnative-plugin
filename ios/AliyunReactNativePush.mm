@@ -328,9 +328,11 @@ RCT_REMAP_METHOD(initPush,
 - (void)onMessageReceived:(NSNotification *)notification {
     CCPSysMessage *message = [notification object];
     NSMutableDictionary *dic = [NSMutableDictionary dictionary];
-    [dic setValue:message.title forKey:@"title"];
-    [dic setValue:message.body forKey:@"body"];
-    PushLogD(@"Push SDK onMessageReceived: %@", message.body);
+    NSString *title = [[NSString alloc] initWithData:message.title encoding:NSUTF8StringEncoding];
+    NSString *body = [[NSString alloc] initWithData:message.body encoding:NSUTF8StringEncoding];
+    [dic setValue:title forKey:@"title"];
+    [dic setValue:body forKey:@"body"];
+    PushLogD(@"Push SDK onMessageReceived: title: %@, body: %@", title, body);
     [self sendEventWithName:@"AliyunPush_onMessage" body:dic];
 }
 
