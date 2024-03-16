@@ -151,6 +151,14 @@ public class MyMessageReceiver extends MessageReceiver {
 
 ### 3.2 iOS
 
+#### 3.2.1 Pofile 添加配置
+
+在当前 ios 目前下的 *Profile* 添加以下代码：
+
+```xml
+source 'https://github.com/aliyun/aliyun-specs.git'
+```
+
 #### 3.2.1 Objc配置
 
 使用Xcode打开ReactNative工程的iOS模块，需要做`-Objc`配置，即应用的TARGETS -> Build Settings -> Linking -> Other Linker Flags ，需添加上 -ObjC 这个属性，否则推送服务无法正常使用 。
