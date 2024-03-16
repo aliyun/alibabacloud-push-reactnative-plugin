@@ -159,7 +159,7 @@ public class MyMessageReceiver extends MessageReceiver {
 source 'https://github.com/aliyun/aliyun-specs.git'
 ```
 
-#### 3.2.1 Objc配置
+#### 3.2.2 Objc配置
 
 使用Xcode打开ReactNative工程的iOS模块，需要做`-Objc`配置，即应用的TARGETS -> Build Settings -> Linking -> Other Linker Flags ，需添加上 -ObjC 这个属性，否则推送服务无法正常使用 。
 
