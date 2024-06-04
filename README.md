@@ -730,7 +730,7 @@ AliyunPush.unbindTag(tags, AliyunPush.kAliyunTargetDevice).then(result => {
 AliyunPush.listTags(AliyunPush.kAliyunTargetDevice).then(result => {
     let code = result.code;
     if (code === AliyunPush.kAliyunPushSuccessCode) {
-        let tagList = result.tagList;
+        let tagList = result.tagsList;
         if (tagList !== null && tagList !== undefined) {
             Alert.alert(`查询设备标签列表结果为: ${tagList}`);
         }
