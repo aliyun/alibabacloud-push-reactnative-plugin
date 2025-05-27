@@ -1,6 +1,6 @@
 {
   "name": "aliyun-react-native-push",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.1",
   "description": "Alibaba cloud mobile push",
   "source": "./src/index.tsx",
   "main": "./lib/module/index.js",
@@ -111,7 +111,8 @@
       "tagName": "v${version}"
     },
     "npm": {
-      "publish": true
+      "publish": true,
+      "tag": "beta"
     },
     "github": {
       "release": false
