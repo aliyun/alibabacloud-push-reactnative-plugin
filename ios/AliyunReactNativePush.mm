@@ -1,22 +1,46 @@
 #import "AliyunReactNativePush.h"
-#import <React/RCTBridge.h>
-#import <React/RCTConvert.h>
-#import <React/RCTEventDispatcher.h>
+#import <AliyunReactNativePush/RNAliyunReactNativePushSpec.h>
 #import <CloudPushSDK/CloudPushSDK.h>
+#import <React/RCTConvert.h>
+#import <React/RCTEventEmitter.h>
 
-static NSString* const KEY_CODE = @"code";
-static NSString* const KEY_ERROR_MSG = @"errorMsg";
 
-static NSString* const CODE_SUCCESS = @"10000";
-static NSString* const CODE_PARAMS_ILLEGAL = @"10001";
-static NSString* const CODE_FAILED = @"10002";
-
+#pragma mark - 用户从iOS AppDelegate中调用本SDK的事件定义
 static NSString* const kRemoteDeviceTokenRegistration = @"RemoteDeviceTokenRegistration";
 static NSString* const kRemoteDeviceTokenRegisterError = @"RemoteDeviceTokenRegisterError";
 static NSString* const kReceiveRemoteNotification = @"ReceiveRemoteNotification";
 static NSString* const kForegroundReceiveNotification = @"ForegroundReceiveNotification";
 static NSString* const kNotificationAction = @"NotificationAction";
 
+
+#pragma mark - iOS发送给JS的事件定义
+static NSString *const kOnRegisterDeviceTokenSuccess = @"AliyunPush_onRegisterDeviceTokenSuccess";
+static NSString *const kOnRegisterDeviceTokenFailed = @"AliyunPush_onRegisterDeviceTokenFailed";
+static NSString *const kOnNotification = @"AliyunPush_onNotification";
+static NSString *const kOnNotificationOpened = @"AliyunPush_onNotificationOpened";
+static NSString *const kOnNotificationRemoved = @"AliyunPush_onNotificationRemoved";
+static NSString *const kOnChannelOpened = @"AliyunPush_onChannelOpened";
+static NSString *const kOnMessage = @"AliyunPush_onMessage";
+
+
+#pragma mark - Push Result Key定义
+static NSString* const KEY_CODE = @"code";
+static NSString* const KEY_ERROR = @"errorMsg";
+
+
+#pragma mark - Push Result Value定义
+static NSString* const CODE_SUCCESS = @"10000";
+static NSString* const CODE_FAILED = @"10002";
+static NSString* const CODE_ONLY_ANDROID = @"10003";
+static NSString* const ERROR_ONLY_ANDROID = @"Only Support Android";
+
+
+
+#pragma mark - 插件日志
+
+// ---------------------------------------------
+// 用于打印插件日志
+// ---------------------------------------------
 
 @interface AliyunPushLog : NSObject
 
@@ -56,454 +80,270 @@ static BOOL logEnable = YES;
 
 @end
 
-@implementation AliyunPush {
-    BOOL _showNoticeWhenForeground;
+
+#pragma mark - AliyunPush
+
+// ---------------------------------------------
+// AliyunPush implementation
+// 用户应该在自己的 AppDelegate 中调用以下方法
+// ---------------------------------------------
+
+@implementation AliyunPush
+
++ (void)didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+    [[NSNotificationCenter defaultCenter] postNotificationName:kRemoteDeviceTokenRegistration
+                                                        object:self
+                                                      userInfo:@{@"deviceToken": deviceToken}];
 }
 
++ (void)didFailToRegisterForRemoteNotificationsWithError:(NSError *)error {
+    [[NSNotificationCenter defaultCenter] postNotificationName:kRemoteDeviceTokenRegisterError
+                                                        object:self
+                                                      userInfo:@{@"error": error}];
+}
+
++ (void)didReceiveRemoteNotification:(NSDictionary *)userInfo {
+    [[NSNotificationCenter defaultCenter] postNotificationName:kReceiveRemoteNotification
+                                                        object:self
+                                                      userInfo:@{@"notification": userInfo}];
+}
+
++ (void)didReceiveRemoteNotification:(NSDictionary *)userInfo
+              fetchCompletionHandler:(__strong AliyunPushRemoteNotificationCallback)completionHandler {
+    [[NSNotificationCenter defaultCenter] postNotificationName:kReceiveRemoteNotification
+                                                        object:self
+                                                      userInfo:@{@"notification": userInfo, @"completionHandler": completionHandler}];
+}
+
++ (void)userNotificationCenter:(UNUserNotificationCenter *)center
+       willPresentNotification:(UNNotification *)notification
+         withCompletionHandler:(AliyunPushForeReceiveNoticeCallback)completionHandler {
+    [[NSNotificationCenter defaultCenter] postNotificationName:kForegroundReceiveNotification
+                                                        object:self
+                                                      userInfo:@{@"notification": notification, @"completionHandler": completionHandler}];
+}
+
++ (void)userNotificationCenter:(UNUserNotificationCenter *)center
+didReceiveNotificationResponse:(UNNotificationResponse *)response
+         withCompletionHandler:(AliyunPushNotificationActionCallback)completionHandler {
+    [[NSNotificationCenter defaultCenter] postNotificationName:kNotificationAction
+                                                        object:self
+                                                      userInfo:@{@"response": response, @"completionHandler": completionHandler}];
+}
+
+@end
+
+
+#pragma mark - AliyunReactNativePush Turbo Modules
+
+// ---------------------------------------------
+// AliyunReactNativePush Turbo Modules
+// ---------------------------------------------
+
+@interface AliyunReactNativePush : RCTEventEmitter <NativeAliyunReactNativePushSpec>
+@end
+
+@implementation AliyunReactNativePush {
+    BOOL _showNoticeWhenForeground;
+}
 RCT_EXPORT_MODULE()
 
-+ (BOOL)requiresMainQueueSetup
-{
++ (BOOL)requiresMainQueueSetup {
     return YES;
 }
 
-- (id) init {
+- (id)init {
     self = [super init];
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
-    [center addObserver:self selector:@selector(handleDeviceTokenRegistered:) name:kRemoteDeviceTokenRegistration object:nil];
-    [center addObserver:self selector:@selector(handleDeviceTokenRegisterError:) name:kRemoteDeviceTokenRegisterError object:nil];
-    [center addObserver:self selector:@selector(handleReceiveRemoteNotification:) name:kReceiveRemoteNotification object:nil];
-    [center addObserver:self selector:@selector(handleForegroundReceiveNotification:) name:kForegroundReceiveNotification object:nil];
-    [center addObserver:self selector:@selector(handleNotificationAction:) name:kNotificationAction object:nil];
+    [center addObserver:self selector:@selector(innerHandleDeviceTokenRegistered:) name:kRemoteDeviceTokenRegistration object:nil];
+    [center addObserver:self selector:@selector(innerHandleDeviceTokenRegisterError:) name:kRemoteDeviceTokenRegisterError object:nil];
+    [center addObserver:self selector:@selector(innerHandleReceiveRemoteNotification:) name:kReceiveRemoteNotification object:nil];
+    [center addObserver:self selector:@selector(innerHandleForegroundReceiveNotification:) name:kForegroundReceiveNotification object:nil];
+    [center addObserver:self selector:@selector(innerHandleNotificationAction:) name:kNotificationAction object:nil];
     return self;
 }
 
 - (NSArray<NSString *> *)supportedEvents
 {
-  return @[@"AliyunPush_onRegisterDeviceTokenSuccess",
-           @"AliyunPush_onRegisterDeviceTokenFailed",
-           @"AliyunPush_onNotification",
-           @"AliyunPush_onNotificationOpened",
-           @"AliyunPush_onNotificationRemoved",
-           @"AliyunPush_onChannelOpened",
-           @"AliyunPush_onMessage"
-  ];
+    return @[
+        kOnRegisterDeviceTokenSuccess,
+        kOnRegisterDeviceTokenFailed,
+        kOnNotification,
+        kOnNotificationOpened,
+        kOnNotificationRemoved,
+        kOnChannelOpened,
+        kOnMessage
+    ];
 }
 
-+ (void) didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
-    [[NSNotificationCenter defaultCenter] postNotificationName:kRemoteDeviceTokenRegistration object:self userInfo:@{@"deviceToken": deviceToken}];
-}
-
-
-+ (void) didFailToRegisterForRemoteNotificationsWithError:(NSError *)error {
-    [[NSNotificationCenter defaultCenter] postNotificationName:kRemoteDeviceTokenRegisterError object:self userInfo:@{@"error": error}];
-}
-
-+ (void) didReceiveRemoteNotification:(NSDictionary *)userInfo {
-    [[NSNotificationCenter defaultCenter] postNotificationName:kReceiveRemoteNotification object:self userInfo:@{@"notification": userInfo}];
-}
-
-+ (void) didReceiveRemoteNotifiaction:(NSDictionary *)userInfo fetchCompletionHandler:(AliyunPushRemoteNotificationCallback)completionHandler {
-    [[NSNotificationCenter defaultCenter] postNotificationName:kReceiveRemoteNotification object:self userInfo:@{@"notification": userInfo, @"completionHandler": completionHandler}];
-}
-
-+ (void) userNotificationCenter:(UNUserNotificationCenter *)center willPresentNotification:(UNNotification *)notification withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler{
-    [[NSNotificationCenter defaultCenter] postNotificationName:kForegroundReceiveNotification object:self userInfo:@{@"notification": notification, @"completionHandler": completionHandler}];
-}
-
-+ (void) userNotificationCenter:(UNUserNotificationCenter *)center didReceiveNotificationResponse:(UNNotificationResponse *)response withCompletionHandler:(void (^)(void))completionHandler {
-    [[NSNotificationCenter defaultCenter] postNotificationName:kNotificationAction object:self userInfo:@{@"response": response, @"completionHandler": completionHandler}];
-}
-
-- (void) handleDeviceTokenRegistered: (NSNotification *)notification {
-    NSData* deviceToken = notification.userInfo[@"deviceToken"];
-    [CloudPushSDK registerDevice:deviceToken withCallback:^(CloudPushCallbackResult *res) {
-        if (res.success) {
-            PushLogD(@"Register deviceToken successfully, deviceToken: %@",[CloudPushSDK getApnsDeviceToken]);
-            NSMutableDictionary *dic = [NSMutableDictionary dictionary];
-            [dic setValue:[CloudPushSDK getApnsDeviceToken] forKey:@"apnsDeviceToken"];
-            [self sendEventWithName:@"AliyunPush_onRegisterDeviceTokenSuccess" body:dic];
-        } else {
-            PushLogD(@"Register deviceToken failed, error: %@", res.error);
-            NSMutableDictionary *dic = [NSMutableDictionary dictionary];
-            [dic setValue:res.error forKey:@"error"];
-            [self sendEventWithName:@"AliyunPush_onRegisterDeviceTokenFailed" body:dic];
-        }
-    }];
-    PushLogD(@"####### ===> APNs register success");
-}
-
-- (void) handleDeviceTokenRegisterError: (NSNotification *)notification {
-    NSError* error = notification.userInfo[@"error"];
-    NSMutableDictionary *dic = [NSMutableDictionary dictionary];
-    [dic setValue:error.userInfo.description forKey:@"error"];
-    [self sendEventWithName:@"AliyunPush_onRegisterDeviceTokenFailed" body:dic];
-}
-
-- (void) handleReceiveRemoteNotification: (NSNotification *) notification {
-    NSDictionary *userInfo = notification.userInfo[@"notification"];
-    AliyunPushRemoteNotificationCallback completionHandler = notification.userInfo[@"completionHandler"];
-    
-   //服务端中extras字段，key是自己定义的
-    PushLogD(@"onNotification userInfo =%@", userInfo);
-    
-    [CloudPushSDK sendNotificationAck:userInfo];
-    [self sendEventWithName:@"AliyunPush_onNotification" body:userInfo];
-
-    if (completionHandler != nil) {
-        completionHandler(UIBackgroundFetchResultNewData);
-    }
-}
-
-- (void) handleForegroundReceiveNotification: (NSNotification *) notification {
-    UNNotification *unnotification = notification.userInfo[@"notification"];
-    AliyunPushForeReceiveNoticeCallback completionHandler = notification.userInfo[@"completionHandler"];
-    if(_showNoticeWhenForeground) {
-        // 通知弹出，且带有声音、内容和角标
-        if (completionHandler != nil) {
-            completionHandler(UNNotificationPresentationOptionSound | UNNotificationPresentationOptionAlert | UNNotificationPresentationOptionBadge);
-        }
-    } else {
-        // 处理iOS 10通知，并上报通知打开回执
-        [self handleiOS10Notification:unnotification];
-        // 通知不弹出
-        if (completionHandler != nil) {
-            completionHandler(UNNotificationPresentationOptionNone);
-        }
-    }
-}
-
-- (void) handleNotificationAction: (NSNotification *) notification {
-    UNNotificationResponse *response = notification.userInfo[@"response"];
-    NSString *userAction = response.actionIdentifier;
-    // 点击通知打开
-    if ([userAction isEqualToString:UNNotificationDefaultActionIdentifier]) {
-        [CloudPushSDK sendNotificationAck:response.notification.request.content.userInfo];
-        NSLog(@"###### AliyunPush_onNotificationOpened");
-        [self sendEventWithName:@"AliyunPush_onNotificationOpened" body:response.notification.request.content.userInfo];
-    }
-    // 通知dismiss，category创建时传入UNNotificationCategoryOptionCustomDismissAction才可以触发
-    if ([userAction isEqualToString:UNNotificationDismissActionIdentifier]) {
-        //通知删除回执上报
-        [CloudPushSDK sendDeleteNotificationAck:response.notification.request.content.userInfo];
-        [self sendEventWithName:@"AliyunPush_onNotificationRemoved" body:response.notification.request.content.userInfo];
-    }
-    
-    AliyunPushNotificationActionCallback completionHandler = notification.userInfo[@"completionHandler"];
-    if (completionHandler != nil) {
-        completionHandler();
-    }
-}
-
-- (void)handleiOS10Notification:(UNNotification *)notification {
-    UNNotificationRequest *request = notification.request;
-    UNNotificationContent *content = request.content;
-    NSDictionary *userInfo = content.userInfo;
-    
-    // 通知角标数清0
-    [UIApplication sharedApplication].applicationIconBadgeNumber = 0;
-    //  同步角标数到服务端
-    [CloudPushSDK syncBadgeNum:0 withCallback:^(CloudPushCallbackResult *res) {
-        if (res.success) {
-            PushLogD(@"Sync badge num: 0 success.");
-        } else {
-            PushLogD(@"Sync badge num: 0 failed, error: %@", res.error);
-        }
-    }];
-    
-    
-    // 通知打开回执上报
-    [CloudPushSDK sendNotificationAck:userInfo];
-    PushLogD(@"onNotification userInfo = %@", userInfo);
-    
-    [self sendEventWithName:@"AliyunPush_onNotification" body:userInfo];
-}
-
-
-RCT_REMAP_METHOD(initPush,
-                 initPushWithAppKey:(NSString*)appKey
-                 initPushWithAppSecret:(NSString*)appSecret
-                 withResolver:(RCTPromiseResolveBlock)resolve
-                 withRejecter:(RCTPromiseRejectBlock)reject) {
-    if (!appKey || !appKey.length) {
-        resolve(@{KEY_CODE: CODE_PARAMS_ILLEGAL, @"errorMsg": @"appKey config error"});
-        return;
-    }
-
-    if (!appSecret|| !appSecret.length) {
-        resolve(@{KEY_CODE: CODE_PARAMS_ILLEGAL, @"errorMsg": @"appSecret config error"});
-        return;
-    }
-    
-    
-    [self registerAPNS];
-    
-    //初始化
-    [CloudPushSDK asyncInit:appKey appSecret:appSecret callback:^(CloudPushCallbackResult *res) {
-        if (res.success) {
-            PushLogD(@"Push SDK init success, deviceId: %@.", [CloudPushSDK getDeviceId]);
-            resolve(@{KEY_CODE:CODE_SUCCESS});
-        } else {
-            PushLogD(@"Push SDK init failed, error: %@", res.error);
-            resolve(@{KEY_CODE:CODE_FAILED, @"errorMsg": [NSString stringWithFormat:@"errorCode: %ld", res.error.code]});
-        }
-    }];
-    
-    [self listenerOnChannelOpened];
-    [self registerMessageReceive];
-}
-
-
--(void)registerAPNS {
-    float systemVersionNum = [[[UIDevice currentDevice] systemVersion] floatValue];
-    if (systemVersionNum >= 10.0) {
-        // iOS 10 notifications
-        UNUserNotificationCenter *_notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
-        // 请求推送权限
-        [_notificationCenter requestAuthorizationWithOptions:UNAuthorizationOptionAlert | UNAuthorizationOptionBadge | UNAuthorizationOptionSound completionHandler:^(BOOL granted, NSError * _Nullable error) {
-            if (granted) {
-                // granted
-                PushLogD(@"####### ===> User authored notification.");
-                // 向APNs注册，获取deviceToken
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [RCTSharedApplication() registerForRemoteNotifications];
-                });
-            } else {
-                // not granted
-                PushLogD(@"####### ===> User denied notification.");
-            }
-        }];
-    } else if (systemVersionNum >= 8.0) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored"-Wdeprecated-declarations"
-        [RCTSharedApplication() registerUserNotificationSettings:
-         [UIUserNotificationSettings settingsForTypes:
-          (UIUserNotificationTypeSound | UIUserNotificationTypeAlert | UIUserNotificationTypeBadge)
-                                           categories:nil]];
-        [RCTSharedApplication() registerForRemoteNotifications];
-#pragma clang diagnostic pop
-    } else {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored"-Wdeprecated-declarations"
-        [RCTSharedApplication()registerForRemoteNotificationTypes:
-         (UIRemoteNotificationTypeAlert | UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeSound)];
-#pragma clang diagnostic pop
-    }
-}
-
-#pragma mark Channel Opened
-/**
- *    注册推送通道打开监听
- */
-- (void)listenerOnChannelOpened {
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(onChannelOpened:)
-                                                 name:@"CCPDidChannelConnectedSuccess"
-                                               object:nil];
-}
-
-/**
- *    推送通道打开回调
- *
- */
-- (void)onChannelOpened:(NSNotification *)notification {
-    [self sendEventWithName:@"AliyunPush_onChannelOpened" body:nil];
-}
-
-#pragma mark Receive Message
-/**
- *    @brief    注册推送消息到来监听
- */
-- (void)registerMessageReceive {
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(onMessageReceived:)
-                                                 name:@"CCPDidReceiveMessageNotification"
-                                               object:nil];
-}
-
-/**
- *    处理到来推送消息
- *
- */
-- (void)onMessageReceived:(NSNotification *)notification {
-    CCPSysMessage *message = [notification object];
-    NSMutableDictionary *dic = [NSMutableDictionary dictionary];
-    NSString *title = [[NSString alloc] initWithData:message.title encoding:NSUTF8StringEncoding];
-    NSString *body = [[NSString alloc] initWithData:message.body encoding:NSUTF8StringEncoding];
-    [dic setValue:title forKey:@"title"];
-    [dic setValue:body forKey:@"body"];
-    PushLogD(@"Push SDK onMessageReceived: title: %@, body: %@", title, body);
-    [self sendEventWithName:@"AliyunPush_onMessage" body:dic];
-}
-
-RCT_REMAP_METHOD(closeCCPChannel,
-                 closeCCPWithResolver:(RCTPromiseResolveBlock)resolve
-                 closeCCPWithRejecter:(RCTPromiseRejectBlock)reject){
-    [CloudPushSDK closeCCPChannel];
-    resolve(@{KEY_CODE: CODE_SUCCESS});
-}
-
-RCT_REMAP_METHOD(getDeviceId,
-                 getDeviceIdWithResolver:(RCTPromiseResolveBlock)resolve
-                 getDeviceIdWithRejecter:(RCTPromiseRejectBlock)reject)
+- (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
+    (const facebook::react::ObjCTurboModule::InitParams &)params
 {
-    resolve([CloudPushSDK getDeviceId]);
+    return std::make_shared<facebook::react::NativeAliyunReactNativePushSpecJSI>(params);
 }
 
-RCT_REMAP_METHOD(turnOnDebug,
-                 turnOnDebugWithResolver:(RCTPromiseResolveBlock)resolve
-                 turnOnDebugWithRejecter:(RCTPromiseRejectBlock)reject) {
-    [CloudPushSDK turnOnDebug];
-    resolve(@{KEY_CODE: CODE_SUCCESS});
-}
-
-RCT_REMAP_METHOD(bindAccount,
-                 bindAccountWithAccount:(NSString *)account
-                 bindAccountWithResolver:(RCTPromiseResolveBlock)resolve
-                 bindAccountWithRejecter:(RCTPromiseRejectBlock)reject) {
-    if (account) {
-        [CloudPushSDK bindAccount:account withCallback:^(CloudPushCallbackResult *res) {
-            if (res.success) {
-                resolve(@{KEY_CODE:CODE_SUCCESS});
-            } else {
-                resolve(@{KEY_CODE:CODE_FAILED, KEY_ERROR_MSG: [NSString stringWithFormat:@"errorCode: %ld", res.error.code]});
-            }
-        }];
+// 内部统一处理 CloudPushSDK 调用结果
+- (void)innerHandlePushCallbackResult:(CloudPushCallbackResult *)result
+                              resolve:(RCTPromiseResolveBlock)resolve
+                              dataKey:(NSString *)key
+                              context:(NSString *)operation {
+    if (result.success) {
+        PushLogD(@"%@ succeeded with Aliyun Push Service", operation);
+        if (key.length > 0) {
+            resolve(@{KEY_CODE: CODE_SUCCESS, key: result.data});
+        } else {
+            resolve(@{KEY_CODE: CODE_SUCCESS});
+        }
     } else {
-        resolve(@{KEY_CODE: CODE_PARAMS_ILLEGAL, KEY_ERROR_MSG: @"account can not be empty"});
+        NSString *errorMsg = [NSString stringWithFormat:@"%@ failed with Aliyun Push Service. Error: %@",
+                              operation, result.error ?: @"Unknown error"];
+        PushLogE(@"%@", errorMsg);
+        resolve(@{KEY_CODE: CODE_FAILED, KEY_ERROR: errorMsg});
     }
 }
 
-RCT_REMAP_METHOD(unbindAccount,
-                 unbindAccountWithResolver:(RCTPromiseResolveBlock)resolve
-                 unbindAccountWithRejecter:(RCTPromiseRejectBlock)reject) {
-    [CloudPushSDK unbindAccount:^(CloudPushCallbackResult *res) {
-        if (res.success) {
-            resolve(@{KEY_CODE:CODE_SUCCESS});
-        } else {
-            resolve(@{KEY_CODE:CODE_FAILED, KEY_ERROR_MSG: [NSString stringWithFormat:@"errorCode: %ld", res.error.code]});
-        }
+- (void)innerHandlePushCallbackResult:(CloudPushCallbackResult *)result
+                              resolve:(RCTPromiseResolveBlock)resolve
+                              context:(NSString *)operation {
+    [self innerHandlePushCallbackResult:result resolve:resolve dataKey:nil context:operation];
+}
+
+- (void)rejectWithAndroidOnlyError:(RCTPromiseResolveBlock)resolve {
+    resolve(@{KEY_CODE: CODE_ONLY_ANDROID,
+            KEY_ERROR: ERROR_ONLY_ANDROID});
+}
+
+#pragma mark - Turbo Module Spec
+
+// ---------------------------------------------
+// Turbo Module Spec implementation
+// ---------------------------------------------
+
+- (void)addAlias:(NSString *)alias
+         resolve:(RCTPromiseResolveBlock)resolve
+          reject:(RCTPromiseRejectBlock)reject {
+    [CloudPushSDK addAlias:alias withCallback:^(CloudPushCallbackResult *res) {
+        [self innerHandlePushCallbackResult:res
+                                    resolve:resolve
+                                    context:@"Add alias"];
     }];
 }
 
-RCT_REMAP_METHOD(addAlias, addAliasWithAlias:(NSString *)alias
-                 addAliasWithResolver:(RCTPromiseResolveBlock)resolve
-                 addAliasWithRejecter:(RCTPromiseRejectBlock)reject) {
-    if (alias) {
-        [CloudPushSDK addAlias:alias withCallback:^(CloudPushCallbackResult *res) {
-            if (res.success) {
-                resolve(@{KEY_CODE:CODE_SUCCESS});
-            } else {
-                resolve(@{KEY_CODE:CODE_FAILED, KEY_ERROR_MSG: [NSString stringWithFormat:@"errorCode: %ld", res.error.code]});
-            }
-        }];
-    } else {
-        resolve(@{KEY_CODE: CODE_PARAMS_ILLEGAL, KEY_ERROR_MSG: @"alias can not be empty"});
-    }
+- (void)bindAccount:(NSString *)account
+            resolve:(RCTPromiseResolveBlock)resolve
+             reject:(RCTPromiseRejectBlock)reject {
+    [CloudPushSDK bindAccount:account withCallback:^(CloudPushCallbackResult *res) {
+        [self innerHandlePushCallbackResult:res
+                                    resolve:resolve
+                                    context:@"Bind account"];
+    }];
 }
 
-RCT_REMAP_METHOD(removeAlias, removeAliasWithAlias:(NSString *)alias
-                 removeAliasWithResolver:(RCTPromiseResolveBlock)resolve
-                 removeAliasWithRejecter:(RCTPromiseRejectBlock)reject) {
-    if (alias) {
-        [CloudPushSDK removeAlias:alias withCallback:^(CloudPushCallbackResult *res) {
-            if (res.success) {
-                resolve(@{KEY_CODE:CODE_SUCCESS});
-            } else {
-                resolve(@{KEY_CODE:CODE_FAILED, KEY_ERROR_MSG: [NSString stringWithFormat:@"errorCode: %ld", res.error.code]});
-            }
-        }];
-    } else {
-        resolve(@{KEY_CODE: CODE_PARAMS_ILLEGAL, KEY_ERROR_MSG: @"alias can not be empty"});
-    }
+- (void)bindAndroidPhoneNumber:(NSString *)phone resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [self rejectWithAndroidOnlyError:resolve];
 }
 
-RCT_REMAP_METHOD(listAlias,
-                 listAliasWithResolver:(RCTPromiseResolveBlock)resolve
-                 listAliasWithRejecter:(RCTPromiseRejectBlock)reject) {
+- (void)bindTag:(NSArray *)tags target:(double)target alias:(NSString *)alias resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
+    [CloudPushSDK bindTag:target 
+                 withTags:tags
+                withAlias:alias
+             withCallback:^(CloudPushCallbackResult *res) {
+        [self innerHandlePushCallbackResult:res
+                                    resolve:resolve
+                                    context:@"Bind tag"];
+    }];
+}
+
+- (void)clearAndroidNotifications:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [self rejectWithAndroidOnlyError:resolve];
+}
+
+- (void)createAndroidChannel:(JS::NativeAliyunReactNativePush::CreateAndroidChannelParams &)params resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
+    [self rejectWithAndroidOnlyError:resolve];
+}
+
+- (void)createAndroidChannelGroup:(NSString *)id name:(NSString *)name desc:(NSString *)desc resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [self rejectWithAndroidOnlyError:resolve];
+}
+
+- (void)getDeviceId:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    NSString *deviceId = [CloudPushSDK getDeviceId];
+    resolve(deviceId);
+}
+
+- (void)getIosApnsDeviceToken:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    NSString *deviceToken = [CloudPushSDK getApnsDeviceToken];
+    resolve(deviceToken);
+}
+
+- (void)initAndroidThirdPush:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [self rejectWithAndroidOnlyError:resolve];
+}
+
+- (void)initPush:(NSString *)appKey appSecret:(NSString *)appSecret resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
+    [self registerAPNs];
+    [self registerAliyunElsChannelMessageAndEvent];
+    
+    [CloudPushSDK startWithAppkey:appKey
+                        appSecret:appSecret
+                         callback:^(CloudPushCallbackResult *res) {
+        [self innerHandlePushCallbackResult:res
+                                    resolve:resolve
+                                    context:@"Init push"];
+    }];
+}
+
+- (void)isAndroidNotificationEnabled:(NSString *)id resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [self rejectWithAndroidOnlyError:resolve];
+}
+
+- (void)isIosChannelOpened:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    BOOL opened = [CloudPushSDK isChannelOpened];
+    resolve(@(opened));
+}
+
+- (void)jumpToAndroidNotificationSettings:(NSString *)id { 
+    PushLogE(@"iOS platform does not support jumping to notification settings page");
+}
+
+- (void)listAlias:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
     [CloudPushSDK listAliases:^(CloudPushCallbackResult *res) {
-        if (res.success) {
-            resolve(@{KEY_CODE:CODE_SUCCESS, @"aliasList": res.data});
-        } else {
-            resolve(@{KEY_CODE:CODE_FAILED, KEY_ERROR_MSG: [NSString stringWithFormat:@"errorCode: %ld", res.error.code]});
-        }
+        [self innerHandlePushCallbackResult:res
+                                    resolve:resolve
+                                    dataKey:@"aliasList"
+                                    context:@"List alias"];
     }];
 }
 
-RCT_REMAP_METHOD(bindTag,
-                 bindTagWithTags:(NSArray *)tags
-                 bindTagWithTarget:(int)target
-                 bindTagWithAlias:(NSString *)alias
-                 bindTagWithResolver:(RCTPromiseResolveBlock)resolve
-                 bindTagWithRejecter:(RCTPromiseRejectBlock)reject
-                 ) {
-    if (tags && tags.count != 0) {
-        if (target != 1 && target != 2 && target != 3) {
-            target = 1;
-        }
-        [CloudPushSDK bindTag:target withTags:tags withAlias:alias withCallback:^(CloudPushCallbackResult *res){
-            if (res.success) {
-                resolve(@{KEY_CODE:CODE_SUCCESS});
-            } else {
-                resolve(@{KEY_CODE:CODE_FAILED, KEY_ERROR_MSG: [NSString stringWithFormat:@"errorCode: %ld", res.error.code]});
-            }
-        }];
-    } else {
-        resolve(@{KEY_CODE: CODE_PARAMS_ILLEGAL, KEY_ERROR_MSG: @"tags can not be empty"});
-    }
-}
-
-RCT_REMAP_METHOD(unbindTag,
-                 unbindTagWithTags:(NSArray *)tags
-                 unbindTagWithTarget:(int)target
-                 unbindTagWithAlias:(NSString *)alias
-                 unbindTagWithResolver:(RCTPromiseResolveBlock)resolve
-                 unbindTagWithRejecter:(RCTPromiseRejectBlock)reject
-                 ) {
-    if (tags && tags.count != 0) {
-        if (target != 1 && target != 2 && target != 3) {
-            target = 1;
-        }
-        [CloudPushSDK unbindTag:target withTags:tags withAlias:alias withCallback:^(CloudPushCallbackResult *res){
-            if (res.success) {
-                resolve(@{KEY_CODE:CODE_SUCCESS});
-            } else {
-                resolve(@{KEY_CODE:CODE_FAILED, KEY_ERROR_MSG: [NSString stringWithFormat:@"errorCode: %ld", res.error.code]});
-            }
-        }];
-    } else {
-        resolve(@{KEY_CODE: CODE_PARAMS_ILLEGAL, KEY_ERROR_MSG: @"tags can not be empty"});
-    }
-}
-
-RCT_REMAP_METHOD(listTags,
-                 listTagsWithTarget:(int)target
-                 listTagsWithResolver:(RCTPromiseResolveBlock)resolve
-                 listTagsWithRejecter:(RCTPromiseRejectBlock)reject
-                 ) {
-    if (target != 1 && target != 2 && target != 3) {
-        target = 1;
-    }
-    [CloudPushSDK listTags:target withCallback:^(CloudPushCallbackResult *res){
-        if (res.success) {
-            resolve(@{KEY_CODE:CODE_SUCCESS, @"tagsList": res.data});
-        } else {
-            resolve(@{KEY_CODE:CODE_FAILED, KEY_ERROR_MSG: [NSString stringWithFormat:@"errorCode: %ld", res.error.code]});
-        }
+- (void)listTags:(double)target resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [CloudPushSDK listTags:target withCallback:^(CloudPushCallbackResult *res) {
+        [self innerHandlePushCallbackResult:res
+                                    resolve:resolve
+                                    dataKey:@"tagsList"
+                                    context:@"List tags"];
     }];
 }
 
-RCT_REMAP_METHOD(setBadgeNum,
-                 setBadgeNumWithNum:(int)num
-                 setBadgeNumWithResolver:(RCTPromiseResolveBlock)resolve
-                 setBadgeNumWithRejecter:(RCTPromiseRejectBlock)reject) {
+- (void)removeAlias:(NSString *)alias resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [CloudPushSDK removeAlias:alias withCallback:^(CloudPushCallbackResult *res) {
+        [self innerHandlePushCallbackResult:res
+                                    resolve:resolve
+                                    context:@"Remove alias"];
+    }];
+}
+
+- (void)setAndroidNotificationInGroup:(BOOL)inGroup resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [self rejectWithAndroidOnlyError:resolve];
+}
+
+- (void)setIosBadgeNum:(double)num resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
     if (@available(iOS 16.0, *)) {
         UNUserNotificationCenter *_notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
         [_notificationCenter setBadgeCount:num withCompletionHandler:^(NSError * _Nullable error) {
             if (error == nil) {
                 resolve(@{KEY_CODE: CODE_SUCCESS});
             } else {
-                resolve(@{KEY_CODE:CODE_FAILED, KEY_ERROR_MSG: error.localizedDescription});
+                resolve(@{KEY_CODE:CODE_FAILED, KEY_ERROR: error.localizedDescription});
             }
         }];
     } else {
@@ -514,56 +354,248 @@ RCT_REMAP_METHOD(setBadgeNum,
     }
 }
 
-RCT_REMAP_METHOD(syncBadgeNum,
-                 syncBadgeNumWithNum:(int)num
-                 syncBadgeNumWithResolver:(RCTPromiseResolveBlock)resolve
-                 syncBadgeNumWithRejecter:(RCTPromiseRejectBlock)reject) {
-    [CloudPushSDK syncBadgeNum:num withCallback:^(CloudPushCallbackResult *res) {
-        if (res.success) {
-            PushLogD(@"Sync badge num: [%lu] success.", (unsigned long)num);
-            resolve(@{KEY_CODE: CODE_SUCCESS});
-        } else {
-            PushLogD(@"Sync badge num: [%lu] failed, error: %@", (unsigned long)num, res.error);
-            resolve(@{KEY_CODE: CODE_FAILED, KEY_ERROR_MSG: [NSString stringWithFormat:@"errorCode: %ld", res.error.code]});
-        }
-    }];
-}
-
-RCT_REMAP_METHOD(showNoticeWhenForeground, showNoticeWhenForegroundWithEnabled: (BOOL)enable
-                 showNoticeWhenForegroundWithResolver:(RCTPromiseResolveBlock)resolve
-                 showNoticeWhenForegroundWithRejecter:(RCTPromiseRejectBlock)reject) {
-    _showNoticeWhenForeground = enable;
-    resolve(@{KEY_CODE:CODE_SUCCESS});
-}
-
-RCT_REMAP_METHOD(getApnsDeviceToken,
-                 getApnsDeviceTokenWithResolver:(RCTPromiseResolveBlock)resolve
-                 getApnsDeviceTokenWithRejecter:(RCTPromiseRejectBlock)reject) {
-    resolve([CloudPushSDK getApnsDeviceToken]);
-}
-
-RCT_REMAP_METHOD(setPluginLogEnabled, setPluginLogEnabledWithEnabled:(BOOL)enabled) {
+- (void)setPluginLogEnabled:(BOOL)enabled { 
     if (enabled) {
       [AliyunPushLog enableLog];
-    }else {
+    } else {
       [AliyunPushLog disableLog];
     }
 }
 
-RCT_REMAP_METHOD(isChannelOpened,
-                 isChannelOpenedWithResolver:(RCTPromiseResolveBlock)resolve
-                 isChannelOpenedWithRejecter:(RCTPromiseRejectBlock)reject) {
-    resolve(@([CloudPushSDK isChannelOpened]));
+- (void)showIosNoticeWhenForeground:(BOOL)enable resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    _showNoticeWhenForeground = enable;
+    resolve(@{KEY_CODE:CODE_SUCCESS});
+}
+
+- (void)syncIosBadgeNum:(double)num resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [CloudPushSDK syncBadgeNum:num withCallback:^(CloudPushCallbackResult *res) {
+        [self innerHandlePushCallbackResult:res
+                                    resolve:resolve
+                                    context:@"Sync badge number"];
+    }];
+}
+
+- (void)unbindAccount:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [CloudPushSDK unbindAccount:^(CloudPushCallbackResult *res) {
+        [self innerHandlePushCallbackResult:res
+                                    resolve:resolve
+                                    context:@"Unbind account"];
+    }];
+}
+
+- (void)unbindAndroidPhoneNumber:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [self rejectWithAndroidOnlyError:resolve];
+}
+
+- (void)unbindTag:(NSArray *)tags target:(double)target alias:(NSString *)alias resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [CloudPushSDK unbindTag:target withTags:tags withAlias:alias withCallback:^(CloudPushCallbackResult *res){
+        [self innerHandlePushCallbackResult:res
+                                    resolve:resolve
+                                    context:@"Unbind tag"];
+    }];
+}
+
+- (void)setLogLevel:(nonnull NSString *)levelString {
+    MPLogLevel level = MPLogLevelNone;
+    if ([levelString isEqualToString:@"none"]) {
+        level = MPLogLevelNone;
+    } else if ([levelString isEqualToString:@"error"]) {
+        level = MPLogLevelError;
+    } else if ([levelString isEqualToString:@"warn"]) {
+        level = MPLogLevelWarn;
+    } else if ([levelString isEqualToString:@"info"]) {
+        level = MPLogLevelInfo;
+    } else if ([levelString isEqualToString:@"debug"]) {
+        level = MPLogLevelDebug;
+    }
+    
+    [CloudPushSDK setLogLevel:level];
 }
 
 
-// Don't compile this code when we build for the old architecture.
-#ifdef RCT_NEW_ARCH_ENABLED
-- (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
-    (const facebook::react::ObjCTurboModule::InitParams &)params
-{
-    return std::make_shared<facebook::react::NativeAliyunReactNativePushSpecJSI>(params);
+#pragma mark - SDK内部用于异步处理通知回调、推送令牌的相关方法
+
+// ---------------------------------------------
+// 内部处理iOS事件
+// ---------------------------------------------
+
+// 处理APNs注册成功
+- (void)innerHandleDeviceTokenRegistered: (NSNotification *)notification {
+    NSData* deviceToken = notification.userInfo[@"deviceToken"];
+    [CloudPushSDK registerDevice:deviceToken withCallback:^(CloudPushCallbackResult *res) {
+        if (res.success) {
+            PushLogD(@"Successfully registered APNs device token with Aliyun Push Service: %@", [CloudPushSDK getApnsDeviceToken]);
+            NSMutableDictionary *dic = [NSMutableDictionary dictionary];
+            [dic setValue:[CloudPushSDK getApnsDeviceToken] forKey:@"apnsDeviceToken"];
+            [self sendEventWithName:kOnRegisterDeviceTokenSuccess body:dic];
+        } else {
+            PushLogE(@"Failed to register APNs device token with Aliyun Push Service. Error: %@", res.error.localizedDescription ?: @"Unknown error");
+            NSMutableDictionary *dic = [NSMutableDictionary dictionary];
+            [dic setValue:res.error forKey:@"error"];
+            [self sendEventWithName:kOnRegisterDeviceTokenFailed body:dic];
+        }
+    }];
+    PushLogD(@"APNs registration succeeded; device token will be automatically registered with Aliyun Push Service.");
 }
-#endif
+
+// 处理APNs注册失败
+- (void)innerHandleDeviceTokenRegisterError: (NSNotification *)notification {
+    NSError* error = notification.userInfo[@"error"];
+    NSMutableDictionary *dic = [NSMutableDictionary dictionary];
+    [dic setValue:error.userInfo.description forKey:@"error"];
+    [self sendEventWithName:kOnRegisterDeviceTokenFailed body:dic];
+    PushLogE(@"APNs registration failed with error: %@", error.localizedDescription);
+}
+
+// 处理静默通知
+- (void)innerHandleReceiveRemoteNotification: (NSNotification *) notification {
+    NSDictionary *userInfo = notification.userInfo[@"notification"];
+    AliyunPushRemoteNotificationCallback completionHandler = notification.userInfo[@"completionHandler"];
+    
+    [CloudPushSDK sendNotificationAck:userInfo];
+    [self sendEventWithName:kOnNotification body:userInfo];
+
+    if (completionHandler != nil) {
+        completionHandler(UIBackgroundFetchResultNewData);
+    }
+    PushLogD(@"Remote notification received, userInfo: %@", userInfo);
+}
+
+// 处理前台通知
+- (void)innerHandleForegroundReceiveNotification: (NSNotification *) notification {
+    UNNotification *unNotification = notification.userInfo[@"notification"];
+    AliyunPushForeReceiveNoticeCallback completionHandler = notification.userInfo[@"completionHandler"];
+    NSString *notificationID = unNotification.request.identifier;
+
+    if(_showNoticeWhenForeground) {
+        // 通知弹出，且带有声音、内容和角标
+        PushLogD(@"Foreground notification received and displayed (ID: %@).", notificationID);
+        if (completionHandler) {
+            if (@available(iOS 14.0, *)) {
+                completionHandler(UNNotificationPresentationOptionSound | UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionBadge);
+            } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        completionHandler(UNNotificationPresentationOptionSound | UNNotificationPresentationOptionAlert | UNNotificationPresentationOptionBadge);
+#pragma clang diagnostic pop
+            }
+        }
+    } else {
+        // 处理iOS 10通知，并上报通知打开回执
+        PushLogD(@"Foreground notification received and not displayed (ID: %@), processed with callback.", notificationID);
+        [self handleiOS10Notification:unNotification];
+        // 通知不弹出
+        if (completionHandler != nil) {
+            completionHandler(UNNotificationPresentationOptionNone);
+        }
+    }
+}
+
+// 处理点击事件
+- (void)innerHandleNotificationAction: (NSNotification *) notification {
+    UNNotificationResponse *response = notification.userInfo[@"response"];
+    NSString *userAction = response.actionIdentifier;
+
+    if ([userAction isEqualToString:UNNotificationDefaultActionIdentifier]) {
+        // 点击通知打开
+        [CloudPushSDK sendNotificationAck:response.notification.request.content.userInfo];
+        PushLogD(@"Notification opened.");
+        [self sendEventWithName:kOnNotificationOpened body:response.notification.request.content.userInfo];
+    }
+    // 通知dismiss，category创建时传入UNNotificationCategoryOptionCustomDismissAction才可以触发
+    if ([userAction isEqualToString:UNNotificationDismissActionIdentifier]) {
+        //通知删除回执上报
+        [CloudPushSDK sendDeleteNotificationAck:response.notification.request.content.userInfo];
+        PushLogD(@"Notification dismissed.");
+        [self sendEventWithName:kOnNotificationRemoved body:response.notification.request.content.userInfo];
+    }
+    
+    AliyunPushNotificationActionCallback completionHandler = notification.userInfo[@"completionHandler"];
+    if (completionHandler != nil) {
+        completionHandler();
+    }
+}
+
+// 处理前台通知
+- (void)handleiOS10Notification:(UNNotification *)notification {
+    UNNotificationRequest *request = notification.request;
+    UNNotificationContent *content = request.content;
+    NSDictionary *userInfo = content.userInfo;
+    
+    // 通知角标数清0
+    [UIApplication sharedApplication].applicationIconBadgeNumber = 0;
+    //  同步角标数到服务端
+    [CloudPushSDK syncBadgeNum:0 withCallback:^(CloudPushCallbackResult *res) {
+        if (res.success) {
+            PushLogD(@"Successfully synced badge number to 0 with Aliyun Push Service");
+        } else {
+            PushLogE(@"Failed to sync badge number to 0 with Aliyun Push Service. Error: %@", res.error.localizedDescription ?: @"Unknown error");
+        }
+    }];
+    
+    // 通知打开回执上报
+    [CloudPushSDK sendNotificationAck:userInfo];
+    [self sendEventWithName:kOnNotification body:userInfo];
+}
+
+
+#pragma mark - APNs注册、长连通道消息与事件注册
+
+// ---------------------------------------------
+// 内部工具方法
+// ---------------------------------------------
+
+// 请求通知权限并在得到授权后向APNs注册，获取deviceToken
+-(void)registerAPNs {
+    UNUserNotificationCenter *_notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+    [_notificationCenter requestAuthorizationWithOptions:UNAuthorizationOptionAlert | UNAuthorizationOptionBadge | UNAuthorizationOptionSound completionHandler:^(BOOL granted, NSError * _Nullable error) {
+        if (granted) {
+            PushLogD(@"User authorized notifications");
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [RCTSharedApplication() registerForRemoteNotifications];
+                PushLogD(@"Registered APNs for remote notifications");
+            });
+        } else {
+            if (error) {
+                PushLogD(@"Authorization failed with error: %@", error.localizedDescription);
+            } else {
+                PushLogD(@"User denied notification authorization");
+            }
+        }
+    }];
+}
+
+- (void)registerAliyunElsChannelMessageAndEvent {
+    NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+
+    [center addObserver:self
+               selector:@selector(onElsChannelOpened:)
+                   name:@"CCPDidChannelConnectedSuccess"
+                 object:nil];
+
+    [center addObserver:self
+               selector:@selector(onElsMessageReceived:)
+                   name:@"CCPDidReceiveMessageNotification"
+                 object:nil];
+}
+
+- (void)onElsChannelOpened:(NSNotification *)notification {
+    PushLogD(@"Aliyun Channel opened");
+    [self sendEventWithName:kOnChannelOpened body:nil];
+}
+
+- (void)onElsMessageReceived:(NSNotification *)notification {
+    NSDictionary *data = notification.object;
+    NSString *title = data[@"title"];
+    NSString *body = data[@"content"];
+    
+    NSDictionary *eventBody = @{
+        @"title": title ?: @"",
+        @"body": body ?: @""
+    };
+    
+    PushLogD(@"Aliyun Message received - Title: %@, Body: %@", title, body);
+    [self sendEventWithName:kOnMessage body:eventBody];
+}
 
 @end

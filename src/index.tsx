@@ -1,171 +1,75 @@
-/* eslint-disable prettier/prettier */
 import {
-  NativeModules,
-  Platform,
-  DeviceEventEmitter,
-  NativeEventEmitter,
-  EmitterSubscription,
-} from 'react-native';
+  default as AliyunPush,
+  AliyunPushEventTypes,
+  AliyunPushLogLevel,
+} from './NativeAliyunReactNativePush';
+import { Platform, NativeEventEmitter } from 'react-native';
+import type { EmitterSubscription } from 'react-native';
+import type {
+  PushResult,
+  CreateAndroidChannelParams,
+} from './NativeAliyunReactNativePush';
+export type { PushResult, CreateAndroidChannelParams };
+export { AliyunPushLogLevel };
 
+// result code
 export const kAliyunPushSuccessCode = '10000';
-
-///参数错误
 export const kAliyunPushParamsIllegal = '10001';
-
 export const kAliyunPushFailedCode = '10002';
-
 export const kAliyunPushOnlyAndroid = '10003';
-
 export const kAliyunPushOnlyIOS = '10004';
-
-///平台不支持，比如Android创建group只支持Android 8.0以上版本
 export const kAliyunPushNotSupport = '10005';
 
-///本设备
+// tag target
 export const kAliyunTargetDevice = 1;
-
-///本设备绑定账号
 export const kAliyunTargetAccount = 2;
-
-///别名
 export const kAliyunTargetAlias = 3;
 
-export const kAliyunPushLogLevelError = 0;
-export const kAliyunPushLogLevelInfo = 1;
-export const kAliyunPushLogLevelDebug = 2;
+export function setLogLevel(level: AliyunPushLogLevel): void {
+  if (level !== AliyunPushLogLevel.None) {
+    AliyunPush.setPluginLogEnabled(true);
+  } else {
+    AliyunPush.setPluginLogEnabled(false);
+  }
 
-const LINKING_ERROR =
-  `The package 'aliyun-react-native-push' doesn't seem to be linked. Make sure: \n\n` +
-  Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
-  '- You rebuilt the app after installing the package\n' +
-  '- You are not using Expo Go\n';
-
-const AliyunPush = NativeModules.AliyunPush
-  ? NativeModules.AliyunPush
-  : new Proxy(
-    {},
-    {
-      get() {
-        throw new Error(LINKING_ERROR);
-      },
-    }
-  );
-
-export interface PushResult {
-  code: string;
-  errorMsg?: string;
-  aliasList?: string;
-  tagsList?: string;
+  AliyunPush.setLogLevel(level);
 }
 
 export function initPush(
   appKey?: string,
   appSecret?: string
 ): Promise<PushResult> {
-  if (Platform.OS === 'ios') {
-    return AliyunPush.initPush(appKey, appSecret);
-  } else {
-    return AliyunPush.initPush();
-  }
-}
-
-/**一定要在initPush之前调用 */
-export function closeIOSCCPChannel(): Promise<PushResult> {
-  if (Platform.OS !== 'ios') {
-    let result = {
-      code: kAliyunPushOnlyIOS,
-      errorMsg: 'Only Support iOS',
-    };
-    return new Promise((resolve, _) => {
-      resolve(result);
-    });
-  }
-
-  return AliyunPush.closeCCPChannel();
-}
-
-export function initAndroidThirdPush(): Promise<PushResult> {
-  if (Platform.OS === 'ios') {
-    let result = {
-      code: kAliyunPushOnlyAndroid,
-      errorMsg: 'Only Support Android',
-    };
-    return new Promise((resolve, _) => {
-      resolve(result);
-    });
-  }
-  return AliyunPush.initThirdPush();
+  return AliyunPush.initPush(appKey, appSecret);
 }
 
 export function getDeviceId(): Promise<string> {
   return AliyunPush.getDeviceId();
 }
 
-export function closeAndroidPushLog(): Promise<PushResult> {
-  if (Platform.OS === 'ios') {
-    let result = {
-      code: kAliyunPushOnlyAndroid,
-      errorMsg: 'Only Support Android',
-    };
-    return new Promise((resolve, _) => {
-      resolve(result);
-    });
-  }
-
-  return AliyunPush.closePushLog();
+export function initAndroidThirdPush(): Promise<PushResult> {
+  return AliyunPush.initAndroidThirdPush();
 }
 
-export function setAndroidLogLevel(level: number): Promise<PushResult> {
-  if (Platform.OS === 'ios') {
-    let result = {
-      code: kAliyunPushOnlyAndroid,
-      errorMsg: 'Only Support Android',
-    };
-    return new Promise((resolve, _) => {
-      resolve(result);
-    });
-  }
-  return AliyunPush.setLogLevel(level);
-}
-
-/* 通用方法 */
-
-/*
- * 绑定账户
- */
 export function bindAccount(account: string): Promise<PushResult> {
   return AliyunPush.bindAccount(account);
 }
-/*
- * 解绑账户
- */
+
 export function unbindAccount(): Promise<PushResult> {
   return AliyunPush.unbindAccount();
 }
-/*
- * 添加别名
- */
+
 export function addAlias(alias: string): Promise<PushResult> {
   return AliyunPush.addAlias(alias);
 }
 
-/*
- * 删除别名
- */
 export function removeAlias(alias: string): Promise<PushResult> {
   return AliyunPush.removeAlias(alias);
 }
 
-/*
- * 查询绑定别名
- */
 export function listAlias(): Promise<PushResult> {
   return AliyunPush.listAlias();
 }
 
-/*
- * 添加标签
- */
 export function bindTag(
   tags: string[],
   target = kAliyunTargetDevice,
@@ -174,9 +78,6 @@ export function bindTag(
   return AliyunPush.bindTag(tags, target, alias);
 }
 
-/*
- * 移除标签
- */
 export function unbindTag(
   tags: string[],
   target = kAliyunTargetDevice,
@@ -185,290 +86,155 @@ export function unbindTag(
   return AliyunPush.unbindTag(tags, target, alias);
 }
 
-/*
- * 移除标签
- */
 export function listTags(target = kAliyunTargetDevice): Promise<PushResult> {
   return AliyunPush.listTags(target);
 }
 
-/*
- * 绑定手机号码
- */
 export function bindPhoneNumber(phone: string): Promise<PushResult> {
-  if (Platform.OS === 'ios') {
-    let result = {
-      code: kAliyunPushOnlyAndroid,
-      errorMsg: 'Only Support Android',
-    };
-    const promise = new Promise<PushResult>((resolve, _) => {
-      resolve(result);
-    });
-    return promise;
-  }
-  return AliyunPush.bindPhoneNumber(phone);
+  return AliyunPush.bindAndroidPhoneNumber(phone);
 }
 
-/*
- * 解绑手机号码
- */
 export function unbindPhoneNumber(): Promise<PushResult> {
-  if (Platform.OS === 'ios') {
-    let result = {
-      code: kAliyunPushOnlyAndroid,
-      errorMsg: 'Only Support Android',
-    };
-    const promise = new Promise<PushResult>((resolve, _) => {
-      resolve(result);
-    });
-    return promise;
-  }
-  return AliyunPush.unbindPhoneNumber();
+  return AliyunPush.unbindAndroidPhoneNumber();
 }
 
-/*
- * 设置通知分组展示，只针对android
- */
 export function setNotificationInGroup(inGroup: boolean): Promise<PushResult> {
-  if (Platform.OS === 'ios') {
-    let result = {
-      code: kAliyunPushOnlyAndroid,
-      errorMsg: 'Only Support Android',
-    };
-    const promise = new Promise<PushResult>((resolve, _) => {
-      resolve(result);
-    });
-    return promise;
-  }
-  return AliyunPush.setNotificationInGroup(inGroup);
+  return AliyunPush.setAndroidNotificationInGroup(inGroup);
 }
 
-/*
- * 清楚所有通知
- */
 export function clearAndroidNotifications(): Promise<PushResult> {
-  if (Platform.OS === 'ios') {
-    let result = {
-      code: kAliyunPushOnlyAndroid,
-      errorMsg: 'Only Support Android',
-    };
-    const promise = new Promise<PushResult>((resolve, _) => {
-      resolve(result);
-    });
-    return promise;
-  }
-
-  return AliyunPush.clearNotifications();
+  return AliyunPush.clearAndroidNotifications();
 }
 
-/*
- * 创建Android平台的NotificationChannel
- */
-export function createAndroidChannel(params: any): Promise<PushResult> {
-  if (Platform.OS === 'ios') {
-    let result = {
-      code: kAliyunPushOnlyAndroid,
-      errorMsg: 'Only Support Android',
-    };
-    const promise = new Promise<PushResult>((resolve, _) => {
-      resolve(result);
-    });
-    return promise;
-  }
-
-  return AliyunPush.createChannel(params);
+export function createAndroidChannel(
+  params: CreateAndroidChannelParams
+): Promise<PushResult> {
+  return AliyunPush.createAndroidChannel(params);
 }
 
-/*
- * 创建通知通道的分组
- */
 export function createAndroidChannelGroup(
   id: string,
   name: string,
   desc: string
 ): Promise<PushResult> {
-  if (Platform.OS === 'ios') {
-    let result = {
-      code: kAliyunPushOnlyAndroid,
-      errorMsg: 'Only Support Android',
-    };
-    const promise = new Promise<PushResult>((resolve, _) => {
-      resolve(result);
-    });
-    return promise;
-  }
-
-  return AliyunPush.createChannelGroup(id, name, desc);
+  return AliyunPush.createAndroidChannelGroup(id, name, desc);
 }
 
-/*
- * 创建通知通道的分组
- */
 export function isAndroidNotificationEnabled(id?: string): Promise<boolean> {
-  if (Platform.OS === 'ios') {
-    return new Promise((resolve, _) => {
-      resolve(false);
-    });
-  }
-
-  return AliyunPush.isNotificationEnabled(id);
+  return AliyunPush.isAndroidNotificationEnabled(id);
 }
 
-/*
- * 跳转到通知设置页面
- */
 export function jumpToAndroidNotificationSettings(id?: string) {
-  if (Platform.OS === 'ios') {
-    return;
-  }
-  AliyunPush.jumpToNotificationSettings(id);
-}
-
-/*
- * 开启iOS的debug日志
- */
-export function turnOnIOSDebug(): Promise<PushResult> {
-  if (Platform.OS !== 'ios') {
-    let result = {
-      code: kAliyunPushOnlyIOS,
-      errorMsg: 'Only Support iOS',
-    };
-    return new Promise((resolve, _) => {
-      resolve(result);
-    });
-  }
-
-  return AliyunPush.turnOnDebug();
+  AliyunPush.jumpToAndroidNotificationSettings(id);
 }
 
 export function setIOSBadgeNum(num: number): Promise<PushResult> {
-  if (Platform.OS !== 'ios') {
-    let result = {
-      code: kAliyunPushOnlyIOS,
-      errorMsg: 'Only Support iOS',
-    };
-    return new Promise((resolve, _) => {
-      resolve(result);
-    });
-  }
-
-  return AliyunPush.setBadgeNum(num);
+  return AliyunPush.setIosBadgeNum(num);
 }
 
 export function syncIOSBadgeNum(num: number): Promise<PushResult> {
-  if (Platform.OS !== 'ios') {
-    let result = {
-      code: kAliyunPushOnlyIOS,
-      errorMsg: 'Only Support iOS',
-    };
-    return new Promise((resolve, _) => {
-      resolve(result);
-    });
-  }
-
-  return AliyunPush.syncBadgeNum(num);
+  return AliyunPush.syncIosBadgeNum(num);
 }
 
 export function getApnsDeviceToken(): Promise<string> {
-  if (Platform.OS !== 'ios') {
-    return new Promise((resolve, _) => {
-      resolve('Only Support iOS');
-    });
-  }
-
-  return AliyunPush.getApnsDeviceToken();
-}
-
-export function isIOSChannelOpened(): Promise<boolean> {
-  if (Platform.OS !== 'ios') {
-    return new Promise((resolve, _) => {
-      resolve(false);
-    });
-  }
-
-  return AliyunPush.isChannelOpened();
+  return AliyunPush.getIosApnsDeviceToken();
 }
 
 export function showNoticeWhenForeground(
   enabled: boolean
 ): Promise<PushResult> {
-  if (Platform.OS !== 'ios') {
-    let result = {
-      code: kAliyunPushOnlyIOS,
-      errorMsg: 'Only Support iOS',
-    };
-    return new Promise((resolve, _) => {
-      resolve(result);
-    });
-  }
-
-  return AliyunPush.showNoticeWhenForeground(enabled);
+  return AliyunPush.showIosNoticeWhenForeground(enabled);
 }
 
-export function setPluginLogEnabled(enabled: boolean): void {
-  AliyunPush.setPluginLogEnabled(enabled);
+export function isIOSChannelOpened(): Promise<boolean> {
+  return AliyunPush.isIosChannelOpened();
 }
+
+/**
+ * ████████████████████████████████████
+ * █ 以下为对callback事件封装
+ * ████████████████████████████████████
+ */
 
 export type PushCallback = (event: any) => void;
 
 /*
  * 推送通知的回调方法
  */
-let _onNotificationListener: EmitterSubscription | null;
+let _onNotificationListener: EmitterSubscription | null = null;
+
 /*
- * 应用处于前台时通知到达回调 - 仅针对Android
+ * 应用处于前台时通知到达回调 - 仅支持Android
  */
-let _onNotificationReceivedInAppListener: EmitterSubscription | null;
+let _onNotificationReceivedInAppListener: EmitterSubscription | null = null;
+
 /*
  * 推送消息的回调方法
  */
-let _onMessageListener: EmitterSubscription | null;
+let _onMessageListener: EmitterSubscription | null = null;
 
 /*
  * 从通知栏打开通知的扩展处理
  */
-let _onNotificationOpenedListener: EmitterSubscription | null;
+let _onNotificationOpenedListener: EmitterSubscription | null = null;
 
 /*
  * 通知删除回调
  */
-let _onNotificationRemovedListener: EmitterSubscription | null;
+let _onNotificationRemovedListener: EmitterSubscription | null = null;
 
 /*
- * 无动作通知点击回调。当在后台或阿里云控制台指定的通知动作为无逻辑跳转时,
+ * 无动作通知点击回调 - 仅支持Android
+ * 当在后台或阿里云控制台指定的通知动作为无逻辑跳转时,
  * 通知点击回调为onNotificationClickedWithNoAction而不是onNotificationOpened
  */
-let _onNotificationClickedWithNoAction: EmitterSubscription | null;
+let _onNotificationClickedWithNoAction: EmitterSubscription | null = null;
 
 /*
  * iOS APNs注册成功回调
  */
-let _onRegisterDeviceTokenSuccessListener: EmitterSubscription | null;
+let _onRegisterDeviceTokenSuccessListener: EmitterSubscription | null = null;
 
 /*
  * iOS APNs注册失败回调
  */
-let _onRegisterDeviceTokenFailedListener: EmitterSubscription | null;
+let _onRegisterDeviceTokenFailedListener: EmitterSubscription | null = null;
 
 /*
- * iOS通知渠道打开回调
+ * iOS自有通道建连成功回调
  */
-let _onChannelOpenedListener: EmitterSubscription | null;
+let _onChannelOpenedListener: EmitterSubscription | null = null;
 
 const pushManagerEmitter = new NativeEventEmitter(AliyunPush);
 
 export function addNotificationCallback(callback: PushCallback) {
+  // 如果已有注册的监听器，先移除
+  if (_onNotificationListener) {
+    pushManagerEmitter.removeAllListeners(AliyunPushEventTypes.onNotification);
+  }
+
   _onNotificationListener = pushManagerEmitter.addListener(
-    'AliyunPush_onNotification',
-    (event) => {
+    AliyunPushEventTypes.onNotification,
+    (event: any) => {
       callback(event);
     }
   );
 }
 
 export function addNotificationReceivedInApp(callback: PushCallback) {
-  _onNotificationReceivedInAppListener = DeviceEventEmitter.addListener(
-    'AliyunPush_onNotificationReceivedInApp',
+  if (Platform.OS === 'ios') {
+    return;
+  }
+
+  // 如果已有注册的监听器，先移除
+  if (_onNotificationReceivedInAppListener) {
+    pushManagerEmitter.removeAllListeners(
+      AliyunPushEventTypes.onNotificationReceivedInApp
+    );
+  }
+
+  _onNotificationReceivedInAppListener = pushManagerEmitter.addListener(
+    AliyunPushEventTypes.onNotificationReceivedInApp,
     (event) => {
       callback(event);
     }
@@ -476,8 +242,13 @@ export function addNotificationReceivedInApp(callback: PushCallback) {
 }
 
 export function addMessageCallback(callback: PushCallback) {
+  // 如果已有注册的监听器，先移除
+  if (_onMessageListener) {
+    pushManagerEmitter.removeAllListeners(AliyunPushEventTypes.onMessage);
+  }
+
   _onMessageListener = pushManagerEmitter.addListener(
-    'AliyunPush_onMessage',
+    AliyunPushEventTypes.onMessage,
     (event) => {
       callback(event);
     }
@@ -485,8 +256,15 @@ export function addMessageCallback(callback: PushCallback) {
 }
 
 export function addNotificationOpenedCallback(callback: PushCallback) {
+  // 如果已有注册的监听器，先移除
+  if (_onNotificationOpenedListener) {
+    pushManagerEmitter.removeAllListeners(
+      AliyunPushEventTypes.onNotificationOpened
+    );
+  }
+
   _onNotificationOpenedListener = pushManagerEmitter.addListener(
-    'AliyunPush_onNotificationOpened',
+    AliyunPushEventTypes.onNotificationOpened,
     (event) => {
       callback(event);
     }
@@ -494,8 +272,15 @@ export function addNotificationOpenedCallback(callback: PushCallback) {
 }
 
 export function addNotificationRemovedCallback(callback: PushCallback) {
+  // 如果已有注册的监听器，先移除
+  if (_onNotificationRemovedListener) {
+    pushManagerEmitter.removeAllListeners(
+      AliyunPushEventTypes.onNotificationRemoved
+    );
+  }
+
   _onNotificationRemovedListener = pushManagerEmitter.addListener(
-    'AliyunPush_onNotificationRemoved',
+    AliyunPushEventTypes.onNotificationRemoved,
     (event) => {
       callback(event);
     }
@@ -503,8 +288,19 @@ export function addNotificationRemovedCallback(callback: PushCallback) {
 }
 
 export function addNotificationClickedWithNoAction(callback: PushCallback) {
-  _onNotificationClickedWithNoAction = DeviceEventEmitter.addListener(
-    'AliyunPush_onNotificationClickedWithNoAction',
+  if (Platform.OS === 'ios') {
+    return;
+  }
+
+  // 如果已有注册的监听器，先移除
+  if (_onNotificationClickedWithNoAction) {
+    pushManagerEmitter.removeAllListeners(
+      AliyunPushEventTypes.onNotificationClickedWithNoAction
+    );
+  }
+
+  _onNotificationClickedWithNoAction = pushManagerEmitter.addListener(
+    AliyunPushEventTypes.onNotificationClickedWithNoAction,
     (event) => {
       callback(event);
     }
@@ -512,8 +308,13 @@ export function addNotificationClickedWithNoAction(callback: PushCallback) {
 }
 
 export function addChannelOpenCallback(callback: PushCallback) {
+  // 如果已有注册的监听器，先移除
+  if (_onChannelOpenedListener) {
+    pushManagerEmitter.removeAllListeners(AliyunPushEventTypes.onChannelOpened);
+  }
+
   _onChannelOpenedListener = pushManagerEmitter.addListener(
-    'AliyunPush_onChannelOpened',
+    AliyunPushEventTypes.onChannelOpened,
     (event) => {
       callback(event);
     }
@@ -521,8 +322,15 @@ export function addChannelOpenCallback(callback: PushCallback) {
 }
 
 export function addRegisterDeviceTokenSuccessCallback(callback: PushCallback) {
+  // 如果已有注册的监听器，先移除
+  if (_onRegisterDeviceTokenSuccessListener) {
+    pushManagerEmitter.removeAllListeners(
+      AliyunPushEventTypes.onRegisterDeviceTokenSuccess
+    );
+  }
+
   _onRegisterDeviceTokenSuccessListener = pushManagerEmitter.addListener(
-    'AliyunPush_onRegisterDeviceTokenSuccess',
+    AliyunPushEventTypes.onRegisterDeviceTokenSuccess,
     (event) => {
       callback(event);
     }
@@ -530,81 +338,76 @@ export function addRegisterDeviceTokenSuccessCallback(callback: PushCallback) {
 }
 
 export function addRegisterDeviceTokenFailedCallback(callback: PushCallback) {
+  // 如果已有注册的监听器，先移除
+  if (_onRegisterDeviceTokenFailedListener) {
+    pushManagerEmitter.removeAllListeners(
+      AliyunPushEventTypes.onRegisterDeviceTokenFailed
+    );
+  }
+
   _onRegisterDeviceTokenFailedListener = pushManagerEmitter.addListener(
-    'AliyunPush_onRegisterDeviceTokenFailed',
+    AliyunPushEventTypes.onRegisterDeviceTokenFailed,
     (event) => {
       callback(event);
     }
   );
 }
 
+function removeListener(listener: EmitterSubscription | null) {
+  if (listener) {
+    listener.remove();
+    return null;
+  }
+  return listener;
+}
+
+function cleanupAllListeners() {
+  pushManagerEmitter.removeAllListeners(AliyunPushEventTypes.onNotification);
+  pushManagerEmitter.removeAllListeners(
+    AliyunPushEventTypes.onNotificationReceivedInApp
+  );
+  pushManagerEmitter.removeAllListeners(AliyunPushEventTypes.onMessage);
+  pushManagerEmitter.removeAllListeners(
+    AliyunPushEventTypes.onNotificationOpened
+  );
+  pushManagerEmitter.removeAllListeners(
+    AliyunPushEventTypes.onNotificationRemoved
+  );
+  pushManagerEmitter.removeAllListeners(
+    AliyunPushEventTypes.onNotificationClickedWithNoAction
+  );
+  pushManagerEmitter.removeAllListeners(AliyunPushEventTypes.onChannelOpened);
+  pushManagerEmitter.removeAllListeners(
+    AliyunPushEventTypes.onRegisterDeviceTokenSuccess
+  );
+  pushManagerEmitter.removeAllListeners(
+    AliyunPushEventTypes.onRegisterDeviceTokenFailed
+  );
+}
+
+/**
+ * 清理所有监听器
+ */
 export function removePushCallback() {
-  if (
-    _onNotificationListener !== null &&
-    _onNotificationListener !== undefined
-  ) {
-    _onNotificationListener.remove();
-    _onNotificationListener = null;
-  }
+  _onNotificationListener = removeListener(_onNotificationListener);
+  _onNotificationReceivedInAppListener = removeListener(
+    _onNotificationReceivedInAppListener
+  );
+  _onMessageListener = removeListener(_onMessageListener);
+  _onNotificationOpenedListener = removeListener(_onNotificationOpenedListener);
+  _onNotificationRemovedListener = removeListener(
+    _onNotificationRemovedListener
+  );
+  _onNotificationClickedWithNoAction = removeListener(
+    _onNotificationClickedWithNoAction
+  );
+  _onChannelOpenedListener = removeListener(_onChannelOpenedListener);
+  _onRegisterDeviceTokenSuccessListener = removeListener(
+    _onRegisterDeviceTokenSuccessListener
+  );
+  _onRegisterDeviceTokenFailedListener = removeListener(
+    _onRegisterDeviceTokenFailedListener
+  );
 
-  if (
-    _onNotificationReceivedInAppListener !== null &&
-    _onNotificationReceivedInAppListener !== undefined
-  ) {
-    _onNotificationReceivedInAppListener.remove();
-    _onNotificationReceivedInAppListener = null;
-  }
-
-  if (_onMessageListener !== null && _onMessageListener !== undefined) {
-    _onMessageListener.remove();
-    _onMessageListener = null;
-  }
-
-  if (
-    _onNotificationOpenedListener !== null &&
-    _onNotificationOpenedListener !== undefined
-  ) {
-    _onNotificationOpenedListener.remove();
-    _onNotificationOpenedListener = null;
-  }
-
-  if (
-    _onNotificationRemovedListener !== null &&
-    _onNotificationRemovedListener !== undefined
-  ) {
-    _onNotificationRemovedListener.remove();
-    _onNotificationRemovedListener = null;
-  }
-
-  if (
-    _onNotificationClickedWithNoAction !== null &&
-    _onNotificationClickedWithNoAction !== undefined
-  ) {
-    _onNotificationClickedWithNoAction.remove();
-    _onNotificationClickedWithNoAction = null;
-  }
-
-  if (
-    _onChannelOpenedListener !== null &&
-    _onChannelOpenedListener !== undefined
-  ) {
-    _onChannelOpenedListener.remove();
-    _onChannelOpenedListener = null;
-  }
-
-  if (
-    _onRegisterDeviceTokenSuccessListener !== null &&
-    _onRegisterDeviceTokenSuccessListener !== undefined
-  ) {
-    _onRegisterDeviceTokenSuccessListener.remove();
-    _onRegisterDeviceTokenSuccessListener = null;
-  }
-
-  if (
-    _onRegisterDeviceTokenFailedListener !== null &&
-    _onRegisterDeviceTokenFailedListener !== undefined
-  ) {
-    _onRegisterDeviceTokenFailedListener.remove();
-    _onRegisterDeviceTokenFailedListener = null;
-  }
+  cleanupAllListeners();
 }
