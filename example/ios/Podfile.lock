@@ -1,11 +1,11 @@
 PODS:
-  - AlicloudELS (1.0.1)
-  - AlicloudPush (3.1.1):
-    - AlicloudELS (< 2.0, >= 1.0.1)
+  - AlicloudELS (1.0.2)
+  - AlicloudPush (3.2.1):
+    - AlicloudELS (< 2.0, >= 1.0.2)
     - AlicloudUTDID (~> 1.0)
   - AlicloudUTDID (1.6.1)
   - AliyunReactNativePush (1.0.0):
-    - AlicloudPush (~> 3.1)
+    - AlicloudPush (~> 3.2)
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1918,10 +1918,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
-  AlicloudELS: 4d0a5317cc96dad1dd251a35698230ce0dda89dc
-  AlicloudPush: edf97ae6886c656586d572db7d3b703347b6faa9
+  AlicloudELS: 1df5c11d0f00914cb7f44dddbb220ebf1a3d6a84
+  AlicloudPush: bcf41a175baf8d9dbde929015715f705d62dce2b
   AlicloudUTDID: 5d2f22d50e11eecd38f30bc7a48c71925ea90976
-  AliyunReactNativePush: 3cec2949a8ab290fbc1bec9c8a303516d13eb48e
+  AliyunReactNativePush: 2b83ea9c0f1d32ebca98c83f6cf07c6dec3df9ac
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   fast_float: 06eeec4fe712a76acc9376682e4808b05ce978b6
@@ -1929,7 +1929,7 @@ SPEC CHECKSUMS:
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: eb93e2f488219332457c3c4eafd2738ddc7e80b8
   hermes-engine: 2771b98fb813fdc6f92edd7c9c0035ecabf9fee7
-  RCT-Folly: e78785aa9ba2ed998ea4151e314036f6c49e6d82
+  RCT-Folly: 36fe2295e44b10d831836cc0d1daec5f8abcf809
   RCTDeprecation: be794de7dc6ed8f9f7fbf525f86e7651b8b68746
   RCTRequired: a83787b092ec554c2eb6019ff3f5b8d125472b3b
   RCTTypeSafety: 48ad3c858926b1c46f46a81a58822b476e178e2c

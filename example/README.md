@@ -69,7 +69,14 @@ bundle install
 每次更新原生依赖后，运行：
 
 ```sh
-bundle exec pod install
+cd ios
+bundle exec pod install --repo-update
+```
+
+可选：清理本地缓存版本
+
+```sh
+rm -rf Pods Podfile.lock
 ```
 
 更多信息，请参阅 [CocoaPods 入门指南](https://guides.cocoapods.org/using/getting-started.html)。

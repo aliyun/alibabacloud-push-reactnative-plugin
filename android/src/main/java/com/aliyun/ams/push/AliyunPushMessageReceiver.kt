@@ -8,7 +8,7 @@ import com.alibaba.sdk.android.push.notification.CPushMessage
 import com.alibaba.sdk.android.push.notification.NotificationConfigure
 import com.alibaba.sdk.android.push.notification.PushData
 
-class AliyunPushMessageReceiver : MessageReceiver() {
+open class AliyunPushMessageReceiver : MessageReceiver() {
 
   companion object {
     const val REC_TAG = "MPS:receiver"
