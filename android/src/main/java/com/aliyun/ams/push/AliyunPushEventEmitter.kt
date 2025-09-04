@@ -54,14 +54,7 @@ class AliyunPushEventEmitter private constructor(private val reactContext: React
 
   // 移除监听器
   fun removeListeners() {
-    synchronized(this) {
-      AliyunPushLog.logListenerManagement("移除所有监听器", null, activeEvents)
-      activeEvents.clear()
-      // 清空所有缓存
-      val totalCached = cachedEvents.values.sumOf { it.size }
-      cachedEvents.clear()
-      AliyunPushLog.logCache("全部事件", "清空所有缓存", totalCached)
-    }
+    // 这里不做任何操作，因为我们无法知道有哪些监听器被移除了
   }
 
   // 发送事件（监听存在时立即发送，否则缓存）
