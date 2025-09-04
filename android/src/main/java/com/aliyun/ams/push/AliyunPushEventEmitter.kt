@@ -27,33 +27,85 @@ class AliyunPushEventEmitter private constructor(private val reactContext: React
   }
 
   private val activeEvents = mutableSetOf<String>()
+  
+  // 缓存的事件数据
+  private val cachedEvents = mutableMapOf<String, MutableList<Map<String, Any?>>>()
 
   // 添加监听器
   fun addListener(eventName: String?) {
-    AliyunPushEvent.fromEventName(eventName)?.let {
-      activeEvents.add(it.eventName)
+    AliyunPushEvent.fromEventName(eventName)?.let { event ->
+      synchronized(this) {
+        activeEvents.add(event.eventName)
+        AliyunPushLog.logListenerManagement("添加监听器", event.eventName, activeEvents)
+        
+        // 发射缓存的事件
+        cachedEvents[event.eventName]?.let { eventList ->
+          AliyunPushLog.logCache(event.eventName, "发射缓存事件", eventList.size)
+          eventList.forEach { cachedEventData ->
+            sendEventInternal(event, cachedEventData)
+          }
+          // 清空该类型的缓存
+          cachedEvents.remove(event.eventName)
+          AliyunPushLog.logCache(event.eventName, "清空缓存", 0)
+        }
+      }
     }
   }
 
   // 移除监听器
   fun removeListeners() {
-    activeEvents.clear()
+    synchronized(this) {
+      AliyunPushLog.logListenerManagement("移除所有监听器", null, activeEvents)
+      activeEvents.clear()
+      // 清空所有缓存
+      val totalCached = cachedEvents.values.sumOf { it.size }
+      cachedEvents.clear()
+      AliyunPushLog.logCache("全部事件", "清空所有缓存", totalCached)
+    }
   }
 
-  // 发送事件（仅当监听存在）
+  // 发送事件（监听存在时立即发送，否则缓存）
   fun sendEvent(event: AliyunPushEvent, body: Map<String, Any?>) {
-    if (activeEvents.contains(event.eventName)) {
-      val eventBody = Arguments.createMap().apply {
-        body.forEach { (key, value) ->
-          when (value) {
-            is String -> putString(key, value)
-            is Number -> putDouble(key, value.toDouble())
-            is Boolean -> putBoolean(key, value)
-            else -> Unit
-          }
+    synchronized(this) {
+      val hasListener = activeEvents.contains(event.eventName)
+      if (hasListener) {
+        // 有监听器，立即发送
+        AliyunPushLog.logEvent(event.eventName, true, "立即发送")
+        sendEventInternal(event, body)
+      } else {
+        // 无监听器，缓存事件
+        AliyunPushLog.logEvent(event.eventName, false, "缓存事件")
+        cacheEvent(event.eventName, body)
+      }
+    }
+  }
+  
+  // 内部发送事件方法
+  private fun sendEventInternal(event: AliyunPushEvent, body: Map<String, Any?>) {
+    val eventBody = Arguments.createMap().apply {
+      body.forEach { (key, value) ->
+        when (value) {
+          is String -> putString(key, value)
+          is Number -> putDouble(key, value.toDouble())
+          is Boolean -> putBoolean(key, value)
+          else -> Unit
         }
       }
-      eventEmitter.emit(event.eventName, eventBody)
+    }
+    eventEmitter.emit(event.eventName, eventBody)
+  }
+  
+  // 缓存事件
+  private fun cacheEvent(eventName: String, body: Map<String, Any?>) {
+    val eventList = cachedEvents.getOrPut(eventName) { mutableListOf() }
+    eventList.add(body)
+    
+    // 限制缓存大小，避免内存泄漏（每种事件类型最多缓存10个）
+    if (eventList.size > 10) {
+      eventList.removeAt(0)
+      AliyunPushLog.logCache(eventName, "缓存超限，移除最旧事件", eventList.size)
+    } else {
+      AliyunPushLog.logCache(eventName, "添加到缓存", eventList.size)
     }
   }
 
@@ -63,6 +115,7 @@ class AliyunPushEventEmitter private constructor(private val reactContext: React
       "title" to cPushMessage.title,
       "body" to cPushMessage.content
     )
+    AliyunPushLog.logMessage("消息到达", cPushMessage.title, cPushMessage.content)
     sendEvent(AliyunPushEvent.ON_MESSAGE, data)
   }
 
@@ -81,10 +134,11 @@ class AliyunPushEventEmitter private constructor(private val reactContext: React
           }
           put("extra", extraJson.toString())
         } catch (e: Exception) {
-          e.printStackTrace()
+          AliyunPushLog.logError("通知到达-解析extra", e)
         }
       }
     }
+    AliyunPushLog.logMessage("通知到达", title, summary)
     sendEvent(AliyunPushEvent.ON_NOTIFICATION, data)
   }
 
@@ -105,11 +159,13 @@ class AliyunPushEventEmitter private constructor(private val reactContext: React
       put("openActivity", openActivity)
       put("openUrl", openUrl)
     }
+    AliyunPushLog.logMessage("应用内通知到达", title, summary)
     sendEvent(AliyunPushEvent.ON_NOTIFICATION_RECEIVED_IN_APP, data)
   }
 
   // 快捷方法：通知被打开
   fun onNotificationOpened(title: String, summary: String, extra: String?) {
+    AliyunPushLog.logMessage("通知被打开", title, summary)
     sendEvent(
       AliyunPushEvent.ON_NOTIFICATION_OPENED,
       mapOf("title" to title, "summary" to summary, "extra" to extra)
@@ -118,6 +174,7 @@ class AliyunPushEventEmitter private constructor(private val reactContext: React
 
   // 快捷方法：通知被移除
   fun onNotificationRemoved(messageId: String) {
+    AliyunPushLog.logMessage("通知被移除", null, "MessageID: $messageId")
     sendEvent(
       AliyunPushEvent.ON_NOTIFICATION_REMOVED,
       mapOf("msgId" to messageId)
@@ -126,6 +183,7 @@ class AliyunPushEventEmitter private constructor(private val reactContext: React
 
   // 快捷方法：通知被点击但无动作
   fun onNotificationClickedWithNoAction(title: String, summary: String, extra: String?) {
+    AliyunPushLog.logMessage("通知被点击但无动作", title, summary)
     sendEvent(
       AliyunPushEvent.ON_NOTIFICATION_CLICKED_WITH_NO_ACTION,
       mapOf("title" to title, "summary" to summary, "extra" to extra)
