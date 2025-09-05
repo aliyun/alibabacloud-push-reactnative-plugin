@@ -6,30 +6,60 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import org.json.JSONObject
 
-class AliyunPushEventEmitter private constructor(private val reactContext: ReactApplicationContext) {
+class AliyunPushEventEmitter private constructor() {
 
   companion object {
     private var instance: AliyunPushEventEmitter? = null
+    private val instanceLock = Any()
 
     fun getInstance(context: ReactApplicationContext): AliyunPushEventEmitter {
-      return instance ?: synchronized(this) {
-        instance ?: AliyunPushEventEmitter(context).also { instance = it }
+      return synchronized(instanceLock) {
+        if (instance == null) {
+          instance = AliyunPushEventEmitter()
+        }
+        instance!!.also { 
+          it.setReactContext(context)
+        }
       }
     }
 
-    fun getInstance(): AliyunPushEventEmitter? {
-      return instance
+    fun getInstance(): AliyunPushEventEmitter {
+      return synchronized(instanceLock) {
+        if (instance == null) {
+          instance = AliyunPushEventEmitter()
+        }
+        instance!!
+      }
     }
   }
 
-  private val eventEmitter by lazy {
-    reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-  }
+  private var reactContext: ReactApplicationContext? = null
+  private val contextLock = Any()
+  
+  private var eventEmitter: DeviceEventManagerModule.RCTDeviceEventEmitter? = null
 
   private val activeEvents = mutableSetOf<String>()
   
   // 缓存的事件数据
   private val cachedEvents = mutableMapOf<String, MutableList<Map<String, Any?>>>()
+
+  // 设置React上下文
+  private fun setReactContext(context: ReactApplicationContext) {
+    synchronized(contextLock) {
+      if (this.reactContext == null) {
+        this.reactContext = context
+        this.eventEmitter = context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+        AliyunPushLog.logCache("ReactContext", "React上下文已初始化", 0)
+      }
+    }
+  }
+  
+  // 检查是否已初始化React上下文
+  private fun isReactContextInitialized(): Boolean {
+    return synchronized(contextLock) {
+      reactContext != null && eventEmitter != null
+    }
+  }
 
   // 添加监听器
   fun addListener(eventName: String?) {
@@ -61,13 +91,14 @@ class AliyunPushEventEmitter private constructor(private val reactContext: React
   fun sendEvent(event: AliyunPushEvent, body: Map<String, Any?>) {
     synchronized(this) {
       val hasListener = activeEvents.contains(event.eventName)
-      if (hasListener) {
-        // 有监听器，立即发送
+      if (hasListener && isReactContextInitialized()) {
+        // 有监听器且React上下文已初始化，立即发送
         AliyunPushLog.logEvent(event.eventName, true, "立即发送")
         sendEventInternal(event, body)
       } else {
-        // 无监听器，缓存事件
-        AliyunPushLog.logEvent(event.eventName, false, "缓存事件")
+        // 无监听器或React上下文未初始化，缓存事件
+        val cacheReason = if (!isReactContextInitialized()) "React上下文未初始化" else "无监听器"
+        AliyunPushLog.logEvent(event.eventName, false, "缓存事件($cacheReason)")
         cacheEvent(event.eventName, body)
       }
     }
@@ -75,17 +106,19 @@ class AliyunPushEventEmitter private constructor(private val reactContext: React
   
   // 内部发送事件方法
   private fun sendEventInternal(event: AliyunPushEvent, body: Map<String, Any?>) {
-    val eventBody = Arguments.createMap().apply {
-      body.forEach { (key, value) ->
-        when (value) {
-          is String -> putString(key, value)
-          is Number -> putDouble(key, value.toDouble())
-          is Boolean -> putBoolean(key, value)
-          else -> Unit
+    eventEmitter?.let { emitter ->
+      val eventBody = Arguments.createMap().apply {
+        body.forEach { (key, value) ->
+          when (value) {
+            is String -> putString(key, value)
+            is Number -> putDouble(key, value.toDouble())
+            is Boolean -> putBoolean(key, value)
+            else -> Unit
+          }
         }
       }
+      emitter.emit(event.eventName, eventBody)
     }
-    eventEmitter.emit(event.eventName, eventBody)
   }
   
   // 缓存事件

@@ -4,7 +4,7 @@ import android.util.Log
 
 object AliyunPushLog {
   @Volatile
-  private var sLogEnabled = true
+  private var sLogEnabled = false
 
   private const val TAG_PUSH = "AliyunPush"
   private const val TAG_EVENT = "AliyunPush-Event"
