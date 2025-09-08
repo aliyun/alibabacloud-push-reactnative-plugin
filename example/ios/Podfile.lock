@@ -1,10 +1,10 @@
 PODS:
   - AlicloudELS (1.0.2)
-  - AlicloudPush (3.2.1):
+  - AlicloudPush (3.2.2):
     - AlicloudELS (< 2.0, >= 1.0.2)
     - AlicloudUTDID (~> 1.0)
   - AlicloudUTDID (1.6.1)
-  - AliyunReactNativePush (1.0.0):
+  - AliyunReactNativePush (1.0.1):
     - AlicloudPush (~> 3.2)
     - DoubleConversion
     - glog
@@ -1919,9 +1919,9 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   AlicloudELS: 1df5c11d0f00914cb7f44dddbb220ebf1a3d6a84
-  AlicloudPush: bcf41a175baf8d9dbde929015715f705d62dce2b
+  AlicloudPush: 5f80e2f08cd0f0068dc2ac80ec86907505c89b9d
   AlicloudUTDID: 5d2f22d50e11eecd38f30bc7a48c71925ea90976
-  AliyunReactNativePush: 2b83ea9c0f1d32ebca98c83f6cf07c6dec3df9ac
+  AliyunReactNativePush: 5e83f286f38aeadaab4ca53a7bd3cf30d65205a7
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   fast_float: 06eeec4fe712a76acc9376682e4808b05ce978b6

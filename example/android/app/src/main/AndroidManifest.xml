@@ -12,7 +12,7 @@
       android:supportsRtl="true">
 
       <!-- 华为推送 -->
-      <meta-data android:name="com.huawei.hms.client.appid" android:value="YOUR_HUAWEI_APP_ID" />
+      <meta-data android:name="com.huawei.hms.client.appid" android:value="appid=YOUR_HUAWEI_APP_ID" />
 
       <!-- VIVO 推送 -->
       <meta-data android:name="com.vivo.push.api_key" android:value="YOUR_VIVO_API_KEY" />

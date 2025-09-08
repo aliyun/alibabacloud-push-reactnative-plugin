@@ -84,7 +84,21 @@ object AliyunThirdPushUtils {
       val packageManager = context.packageManager
       val packageName = context.packageName
       val info = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
-      info.metaData?.getString(key)
+      val metaData = info.metaData ?: return null
+      
+      // 尝试获取字符串值
+      val stringValue = metaData.getString(key)
+      if (stringValue != null) {
+        return stringValue
+      }
+      
+      // 如果字符串值为空，尝试获取整数值并转换为字符串
+      val intValue = metaData.getInt(key, Int.MIN_VALUE)
+      if (intValue != Int.MIN_VALUE) {
+        return intValue.toString()
+      }
+      
+      null
     } catch (e: PackageManager.NameNotFoundException) {
       e.printStackTrace()
       null

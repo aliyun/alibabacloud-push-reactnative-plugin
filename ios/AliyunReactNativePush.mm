@@ -88,47 +88,129 @@ static BOOL logEnable = YES;
 // 用户应该在自己的 AppDelegate 中调用以下方法
 // ---------------------------------------------
 
+// 静态变量定义
+static NSMutableArray *_pendingNotifications = nil;
+static BOOL _hasActiveSubscribers = NO;
+static NSObject *_cacheLock = nil;
+
 @implementation AliyunPush
 
++ (void)initialize {
+    if (self == [AliyunPush class]) {
+        _pendingNotifications = [[NSMutableArray alloc] init];
+        _hasActiveSubscribers = NO;
+        _cacheLock = [[NSObject alloc] init];
+    }
+}
+
+// 缓存通知事件
++ (void)cacheNotificationWithName:(NSString *)name userInfo:(NSDictionary *)userInfo {
+    @synchronized(_cacheLock) {
+        if (_pendingNotifications.count >= 50) { // 限制缓存大小
+            [_pendingNotifications removeObjectAtIndex:0]; // 移除最早的事件
+        }
+        
+        NSDictionary *cachedNotification = @{
+            @"name": name,
+            @"userInfo": userInfo ?: @{}
+        };
+        [_pendingNotifications addObject:cachedNotification];
+        
+        PushLogD(@"Cached notification: %@, total cached: %lu", name, (unsigned long)_pendingNotifications.count);
+    }
+}
+
+// 发送所有缓存的通知
++ (void)flushCachedNotifications {
+    @synchronized(_cacheLock) {
+        NSArray *notificationsToSend = [_pendingNotifications copy];
+        [_pendingNotifications removeAllObjects];
+        
+        PushLogD(@"Flushing %lu cached notifications", (unsigned long)notificationsToSend.count);
+        
+        for (NSDictionary *notification in notificationsToSend) {
+            NSString *name = notification[@"name"];
+            NSDictionary *userInfo = notification[@"userInfo"];
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter] postNotificationName:name
+                                                                    object:self
+                                                                  userInfo:userInfo];
+            });
+        }
+    }
+}
+
+// 注册订阅者（由AliyunReactNativePush模块调用）
++ (void)registerSubscriber {
+    @synchronized(_cacheLock) {
+        if (!_hasActiveSubscribers) {
+            _hasActiveSubscribers = YES;
+            PushLogD(@"Subscriber registered, flushing cached notifications");
+            [self flushCachedNotifications];
+        }
+    }
+}
+
+// 取消注册订阅者
++ (void)unregisterSubscriber {
+    @synchronized(_cacheLock) {
+        _hasActiveSubscribers = NO;
+        PushLogD(@"Subscriber unregistered");
+    }
+}
+
+// 安全发送通知的统一方法
++ (void)safePostNotificationName:(NSString *)name userInfo:(NSDictionary *)userInfo {
+    @synchronized(_cacheLock) {
+        if (_hasActiveSubscribers) {
+            // 有订阅者，直接发送
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter] postNotificationName:name
+                                                                    object:self
+                                                                  userInfo:userInfo];
+            });
+            PushLogD(@"Direct post notification: %@", name);
+        } else {
+            // 无订阅者，缓存事件
+            [self cacheNotificationWithName:name userInfo:userInfo];
+        }
+    }
+}
+
 + (void)didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
-    [[NSNotificationCenter defaultCenter] postNotificationName:kRemoteDeviceTokenRegistration
-                                                        object:self
-                                                      userInfo:@{@"deviceToken": deviceToken}];
+    [self safePostNotificationName:kRemoteDeviceTokenRegistration
+                          userInfo:@{@"deviceToken": deviceToken}];
 }
 
 + (void)didFailToRegisterForRemoteNotificationsWithError:(NSError *)error {
-    [[NSNotificationCenter defaultCenter] postNotificationName:kRemoteDeviceTokenRegisterError
-                                                        object:self
-                                                      userInfo:@{@"error": error}];
+    [self safePostNotificationName:kRemoteDeviceTokenRegisterError
+                          userInfo:@{@"error": error}];
 }
 
 + (void)didReceiveRemoteNotification:(NSDictionary *)userInfo {
-    [[NSNotificationCenter defaultCenter] postNotificationName:kReceiveRemoteNotification
-                                                        object:self
-                                                      userInfo:@{@"notification": userInfo}];
+    [self safePostNotificationName:kReceiveRemoteNotification
+                          userInfo:@{@"notification": userInfo}];
 }
 
 + (void)didReceiveRemoteNotification:(NSDictionary *)userInfo
               fetchCompletionHandler:(__strong AliyunPushRemoteNotificationCallback)completionHandler {
-    [[NSNotificationCenter defaultCenter] postNotificationName:kReceiveRemoteNotification
-                                                        object:self
-                                                      userInfo:@{@"notification": userInfo, @"completionHandler": completionHandler}];
+    [self safePostNotificationName:kReceiveRemoteNotification
+                          userInfo:@{@"notification": userInfo, @"completionHandler": completionHandler}];
 }
 
 + (void)userNotificationCenter:(UNUserNotificationCenter *)center
        willPresentNotification:(UNNotification *)notification
          withCompletionHandler:(AliyunPushForeReceiveNoticeCallback)completionHandler {
-    [[NSNotificationCenter defaultCenter] postNotificationName:kForegroundReceiveNotification
-                                                        object:self
-                                                      userInfo:@{@"notification": notification, @"completionHandler": completionHandler}];
+    [self safePostNotificationName:kForegroundReceiveNotification
+                          userInfo:@{@"notification": notification, @"completionHandler": completionHandler}];
 }
 
 + (void)userNotificationCenter:(UNUserNotificationCenter *)center
 didReceiveNotificationResponse:(UNNotificationResponse *)response
          withCompletionHandler:(AliyunPushNotificationActionCallback)completionHandler {
-    [[NSNotificationCenter defaultCenter] postNotificationName:kNotificationAction
-                                                        object:self
-                                                      userInfo:@{@"response": response, @"completionHandler": completionHandler}];
+    [self safePostNotificationName:kNotificationAction
+                          userInfo:@{@"response": response, @"completionHandler": completionHandler}];
 }
 
 @end
@@ -145,6 +227,10 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
 @implementation AliyunReactNativePush {
     BOOL _showNoticeWhenForeground;
+    NSMutableDictionary<NSString *, NSMutableArray *> *_pendingEvents;
+    NSMutableSet<NSString *> *_activeListeners;
+    NSObject *_eventCacheLock;
+    BOOL _hasStartedObserving;
 }
 RCT_EXPORT_MODULE()
 
@@ -154,13 +240,112 @@ RCT_EXPORT_MODULE()
 
 - (id)init {
     self = [super init];
-    NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
-    [center addObserver:self selector:@selector(innerHandleDeviceTokenRegistered:) name:kRemoteDeviceTokenRegistration object:nil];
-    [center addObserver:self selector:@selector(innerHandleDeviceTokenRegisterError:) name:kRemoteDeviceTokenRegisterError object:nil];
-    [center addObserver:self selector:@selector(innerHandleReceiveRemoteNotification:) name:kReceiveRemoteNotification object:nil];
-    [center addObserver:self selector:@selector(innerHandleForegroundReceiveNotification:) name:kForegroundReceiveNotification object:nil];
-    [center addObserver:self selector:@selector(innerHandleNotificationAction:) name:kNotificationAction object:nil];
+    if (self) {
+        _pendingEvents = [[NSMutableDictionary alloc] init];
+        _activeListeners = [[NSMutableSet alloc] init];
+        _eventCacheLock = [[NSObject alloc] init];
+        _hasStartedObserving = NO;
+        
+        NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+        [center addObserver:self selector:@selector(innerHandleDeviceTokenRegistered:) name:kRemoteDeviceTokenRegistration object:nil];
+        [center addObserver:self selector:@selector(innerHandleDeviceTokenRegisterError:) name:kRemoteDeviceTokenRegisterError object:nil];
+        [center addObserver:self selector:@selector(innerHandleReceiveRemoteNotification:) name:kReceiveRemoteNotification object:nil];
+        [center addObserver:self selector:@selector(innerHandleForegroundReceiveNotification:) name:kForegroundReceiveNotification object:nil];
+        [center addObserver:self selector:@selector(innerHandleNotificationAction:) name:kNotificationAction object:nil];
+        
+        // 通知AliyunPush有订阅者了
+        [AliyunPush registerSubscriber];
+        
+        PushLogD(@"AliyunReactNativePush module initialized");
+    }
     return self;
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [AliyunPush unregisterSubscriber];
+    PushLogD(@"AliyunReactNativePush module deallocated");
+}
+
+- (void)startObserving {
+    [super startObserving];
+    @synchronized(_eventCacheLock) {
+        _hasStartedObserving = YES;
+        PushLogD(@"Started observing, processing pending events");
+        [self processPendingEventsForActiveListeners];
+    }
+}
+
+- (void)stopObserving {
+    [super stopObserving];
+    @synchronized(_eventCacheLock) {
+        _hasStartedObserving = NO;
+        PushLogD(@"Stopped observing");
+        [_activeListeners removeAllObjects];
+        PushLogD(@"Removed all listeners");
+    }
+}
+
+// 重写addListener方法
+- (void)addListener:(NSString *)eventName {
+    [super addListener:eventName];
+    
+    @synchronized(_eventCacheLock) {
+        [_activeListeners addObject:eventName];
+        PushLogD(@"Added listener for event: %@", eventName);
+        
+        // 如果已经开始观察，立即处理该事件类型的缓存事件
+        if (_hasStartedObserving) {
+            [self processPendingEventsForEvent:eventName];
+        }
+    }
+}
+
+// 处理特定事件类型的缓存事件
+- (void)processPendingEventsForEvent:(NSString *)eventName {
+    NSArray *pendingEvents = _pendingEvents[eventName];
+    if (pendingEvents.count > 0) {
+        PushLogD(@"Processing %lu pending events for %@", (unsigned long)pendingEvents.count, eventName);
+        
+        for (id eventBody in pendingEvents) {
+            id bodyToSend = ([eventBody isKindOfClass:[NSNull class]]) ? nil : eventBody;
+            [super sendEventWithName:eventName body:bodyToSend];
+        }
+        [_pendingEvents removeObjectForKey:eventName];
+    }
+}
+
+// 处理所有激活listener的缓存事件
+- (void)processPendingEventsForActiveListeners {
+    NSArray *activeListenersCopy = [_activeListeners allObjects];
+    for (NSString *eventName in activeListenersCopy) {
+        [self processPendingEventsForEvent:eventName];
+    }
+}
+
+// 重写sendEventWithName方法，实现缓存机制
+- (void)sendEventWithName:(NSString *)eventName body:(id)body {
+    @synchronized(_eventCacheLock) {
+        if (_hasStartedObserving && [_activeListeners containsObject:eventName]) {
+            // 有相应的listener且已开始观察，直接发送
+            [super sendEventWithName:eventName body:body];
+            PushLogD(@"Direct send event: %@", eventName);
+        } else {
+            // 没有listener或未开始观察，缓存事件
+            if (!_pendingEvents[eventName]) {
+                _pendingEvents[eventName] = [[NSMutableArray alloc] init];
+            }
+            
+            // 限制每个事件类型的缓存数量
+            NSMutableArray *eventQueue = _pendingEvents[eventName];
+            if (eventQueue.count >= 50) {
+                [eventQueue removeObjectAtIndex:0]; // 移除最早的事件
+            }
+            
+            [eventQueue addObject:body ?: [NSNull null]];
+            PushLogD(@"Cached event: %@, total cached: %lu", eventName, (unsigned long)eventQueue.count);
+        }
+    }
 }
 
 - (NSArray<NSString *> *)supportedEvents
