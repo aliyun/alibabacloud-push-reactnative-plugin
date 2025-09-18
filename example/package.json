@@ -5,6 +5,7 @@
   "scripts": {
     "android:5554": "yarn android --deviceId=emulator-5554 --port=8082",
     "ios:15": "yarn ios --simulator=\"iPhone 15\" --port=8082",
+    "ios:16Pro": "yarn ios --simulator=\"iPhone 16 Pro\" --port=8082",
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "start": "react-native start",

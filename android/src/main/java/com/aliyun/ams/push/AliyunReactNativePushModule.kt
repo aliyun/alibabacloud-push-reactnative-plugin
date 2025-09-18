@@ -332,11 +332,38 @@ class AliyunReactNativePushModule(
 
   override fun setAndroidBadgeNum(num: Double, promise: Promise?) {
     try {
-      val context = reactContext.applicationContext
       val badgeNum = num.toInt()
+      
+      // 优先使用当前Activity，如果没有则使用applicationContext
+      val context = reactContext.currentActivity ?: reactContext.applicationContext
+      val contextType = if (reactContext.currentActivity != null) "Activity" else "ApplicationContext"
+      
+      AliyunPushLog.d("AliyunPush", "Setting badge number to: $badgeNum using context type: $contextType")
+      
+      // 验证是否能获取到启动Activity（这对某些厂商的角标设置很重要）
+      val packageName = context.packageName
+      val launcherIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+      val launcherClassName = launcherIntent?.component?.className
+      
+      AliyunPushLog.d("AliyunPush", "Package name: $packageName")
+      
+      if (launcherClassName == null) {
+        AliyunPushLog.w("AliyunPush", "Cannot get launcher activity className, badge setting may not work on some devices (VIVO, OPPO, etc.)")
+        // 即使获取不到launcher activity，也尝试设置角标，因为某些设备可能仍然有效
+      } else {
+        AliyunPushLog.d("AliyunPush", "Found launcher activity: $launcherClassName")
+      }
+      
+      // 调用阿里云推送SDK设置角标
       PushServiceFactory.getCloudPushService().setBadgeNum(context, badgeNum)
+      AliyunPushLog.d("AliyunPush", "Badge number set to: $badgeNum via Aliyun Push SDK")
+      
       resolveSuccess(promise)
     } catch (e: Exception) {
+      AliyunPushLog.e("AliyunPush", "Failed to set badge number: ${e.message}")
+      if (AliyunPushLog.isLogEnabled()) {
+        e.printStackTrace()
+      }
       resolveWithError(promise, CODE_FAILED, "Failed to set badge number: ${e.message}")
     }
   }
