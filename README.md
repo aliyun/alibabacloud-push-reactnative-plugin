@@ -697,6 +697,26 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
   jumpToAndroidNotificationSettings('channel1'); // 打开 channel1 的设置页面
   ```
 
+#### `setAndroidBadgeNum(num: number): Promise<PushResult>`
+
+设置 Android 应用图标的角标数字。
+
+- **参数**：
+  - `num`: `number` - 要设置的角标数字。
+- **返回**：`Promise<PushResult>` - 操作状态。
+- **注意**：仅 Android 可用。
+- **示例**：
+
+  ```typescript
+  import { setAndroidBadgeNum } from 'aliyun-react-native-push';
+
+  async function setAndroidBadge() {
+    const result = await setAndroidBadgeNum(5);
+    console.log('设置Android角标结果:', result);
+  }
+  setAndroidBadge();
+  ```
+
 ### 6.4 iOS 专用接口
 
 #### `setIOSBadgeNum(num: number): Promise<PushResult>`

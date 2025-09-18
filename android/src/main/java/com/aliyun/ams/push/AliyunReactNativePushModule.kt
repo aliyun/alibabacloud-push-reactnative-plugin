@@ -330,6 +330,17 @@ class AliyunReactNativePushModule(
     context.startActivity(intent)
   }
 
+  override fun setAndroidBadgeNum(num: Double, promise: Promise?) {
+    try {
+      val context = reactContext.applicationContext
+      val badgeNum = num.toInt()
+      PushServiceFactory.getCloudPushService().setBadgeNum(context, badgeNum)
+      resolveSuccess(promise)
+    } catch (e: Exception) {
+      resolveWithError(promise, CODE_FAILED, "Failed to set badge number: ${e.message}")
+    }
+  }
+
   override fun setIosBadgeNum(num: Double, promise: Promise?) {
     resolveOnlyIos(promise)
   }

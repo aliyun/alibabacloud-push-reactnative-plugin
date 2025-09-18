@@ -35,6 +35,7 @@ export interface Spec extends TurboModule {
   ): Promise<PushResult>;
   isAndroidNotificationEnabled(id?: string): Promise<boolean>;
   jumpToAndroidNotificationSettings(id?: string): void;
+  setAndroidBadgeNum(num: number): Promise<PushResult>;
 
   // iOS 特定接口
   setIosBadgeNum(num: number): Promise<PushResult>;
