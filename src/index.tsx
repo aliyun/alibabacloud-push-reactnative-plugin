@@ -128,6 +128,10 @@ export function jumpToAndroidNotificationSettings(id?: string) {
   AliyunPush.jumpToAndroidNotificationSettings(id);
 }
 
+export function setAndroidBadgeNum(num: number): Promise<PushResult> {
+  return AliyunPush.setAndroidBadgeNum(num);
+}
+
 export function setIOSBadgeNum(num: number): Promise<PushResult> {
   return AliyunPush.setIosBadgeNum(num);
 }

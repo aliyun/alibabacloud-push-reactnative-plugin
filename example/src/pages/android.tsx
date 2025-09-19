@@ -13,6 +13,7 @@ import { CustomButton, SectionCard } from '../components/CommonComponents';
 const AndroidPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [channel, setChannel] = useState('');
+  const [badgeNum, setBadgeNum] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const initThirdPush = () => {
@@ -168,6 +169,32 @@ const AndroidPage: React.FC = () => {
     AliyunPush.jumpToAndroidNotificationSettings();
   };
 
+  const handleSetBadgeNum = async () => {
+    if (!badgeNum) {
+      Alert.alert('错误', '请输入角标数字');
+      return;
+    }
+    const num = parseInt(badgeNum, 10);
+    if (isNaN(num) || num < 0) {
+      Alert.alert('错误', '请输入有效的角标数字（大于等于0）');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const result = await AliyunPush.setAndroidBadgeNum(num);
+      if (result.code === AliyunPush.kAliyunPushSuccessCode) {
+        Alert.alert('成功', `设置Android角标数字为 ${num} 成功 👋`);
+        setBadgeNum('');
+      } else {
+        Alert.alert('错误', `设置Android角标失败: ${result.errorMsg}`);
+      }
+    } catch (error) {
+      Alert.alert('错误', '设置Android角标失败: 未知错误');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -216,6 +243,24 @@ const AndroidPage: React.FC = () => {
           <CustomButton
             title="清除所有通知"
             onPress={handleClearAllNotifications}
+            disabled={isLoading}
+          />
+        </SectionCard>
+
+        {/* 角标管理 */}
+        <Text style={styles.sectionHeader}>角标管理</Text>
+        <SectionCard>
+          <TextInput
+            style={styles.input}
+            onChangeText={setBadgeNum}
+            value={badgeNum}
+            placeholder="输入角标数字（如：5）"
+            keyboardType="numeric"
+            placeholderTextColor="#666666"
+          />
+          <CustomButton
+            title="设置Android角标"
+            onPress={handleSetBadgeNum}
             disabled={isLoading}
           />
         </SectionCard>

@@ -517,6 +517,10 @@ RCT_EXPORT_MODULE()
     }];
 }
 
+- (void)setAndroidBadgeNum:(double)num resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
+    [self rejectWithAndroidOnlyError:resolve];
+}
+
 - (void)setAndroidNotificationInGroup:(BOOL)inGroup resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
     [self rejectWithAndroidOnlyError:resolve];
 }
