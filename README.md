@@ -149,7 +149,6 @@ allprojects {
 
   ```xml
   <!-- 华为/荣耀 Badge 需要权限 -->
-  <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="com.hihonor.android.launcher.permission.CHANGE_BADGE" />
   <uses-permission android:name="com.huawei.android.launcher.permission.CHANGE_BADGE" />
 
@@ -729,7 +728,6 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
 ```xml
 <!-- 华为/荣耀 Badge 需要权限 -->
-<uses-permission android:name="android.permission.INTERNET" />
 <uses-permission android:name="com.hihonor.android.launcher.permission.CHANGE_BADGE" />
 <uses-permission android:name="com.huawei.android.launcher.permission.CHANGE_BADGE" />
 
