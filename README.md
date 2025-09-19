@@ -144,7 +144,18 @@ allprojects {
 
 - **替换参数**：将 `YOUR_XXX` 占位符替换为各推送平台提供的实际参数（如 App ID、API Key 等）。请参考[阿里云推送官方文档](https://help.aliyun.com/document_detail/434677.html)获取具体配置方法。
 - **消息接收器**：本插件已内置 `AliyunPushMessageReceiver`，只需按上述模板添加 `<receiver>` 配置即可支持通知的接收和处理。
-- **权限检查**：确保 `AndroidManifest.xml` 已包含必要的网络和推送相关权限（如 `<uses-permission android:name="android.permission.INTERNET" />`）。
+- **权限检查**：确保 `AndroidManifest.xml` 已包含必要的网络和推送相关权限。
+- **角标权限**：如需使用Android角标功能，请添加以下权限：
+
+  ```xml
+  <!-- 华为/荣耀 Badge 需要权限 -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="com.hihonor.android.launcher.permission.CHANGE_BADGE" />
+  <uses-permission android:name="com.huawei.android.launcher.permission.CHANGE_BADGE" />
+
+  <!-- VIVO 角标需要权限 -->
+  <uses-permission android:name="com.vivo.notification.permission.BADGE_ICON" />
+  ```
 
 #### 5.1.3 混淆配置
 
@@ -705,6 +716,33 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
   - `num`: `number` - 要设置的角标数字。
 - **返回**：`Promise<PushResult>` - 操作状态。
 - **注意**：仅 Android 可用。
+
+**支持情况**：
+
+- **支持机型**：当前接口仅支持华为、荣耀、VIVO机型
+- **版本要求**：
+  - 华为机型：EMUI 4.1 及以上支持角标功能
+  - 荣耀机型：Magic UI 6.0 版本开始支持数字角标
+
+**权限配置**：
+在 `android/app/src/main/AndroidManifest.xml` 中添加以下权限：
+
+```xml
+<!-- 华为/荣耀 Badge 需要权限 -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="com.hihonor.android.launcher.permission.CHANGE_BADGE" />
+<uses-permission android:name="com.huawei.android.launcher.permission.CHANGE_BADGE" />
+
+<!-- VIVO 角标需要权限 -->
+<uses-permission android:name="com.vivo.notification.permission.BADGE_ICON" />
+```
+
+**重要提示**：
+
+- 部分机型需要在设置中手动打开数字角标功能
+- 如果角标不显示，请检查系统设置中的角标开关是否已启用
+- 不同厂商的角标实现机制不同，显示效果可能有差异
+
 - **示例**：
 
   ```typescript
@@ -712,7 +750,11 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
   async function setAndroidBadge() {
     const result = await setAndroidBadgeNum(5);
-    console.log('设置Android角标结果:', result);
+    if (result.code === '10000') {
+      console.log('设置Android角标成功');
+    } else {
+      console.log('设置Android角标失败:', result.errorMsg);
+    }
   }
   setAndroidBadge();
   ```
