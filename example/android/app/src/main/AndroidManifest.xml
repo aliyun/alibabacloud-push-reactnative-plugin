@@ -30,22 +30,22 @@
       <meta-data android:name="com.hihonor.push.app_id" android:value="YOUR_HIHONOR_APP_ID" />
 
       <!-- OPPO 推送 -->
-      <meta-data android:name="com.oppo.push.key" android:value="YOUR_OPPO_KEY" />
-      <meta-data android:name="com.oppo.push.secret" android:value="YOUR_OPPO_SECRET" />
+      <meta-data android:name="com.oppo.push.key" android:value="id=YOUR_OPPO_KEY" />
+      <meta-data android:name="com.oppo.push.secret" android:value="id=YOUR_OPPO_SECRET" />
 
       <!-- 小米推送 -->
-      <meta-data android:name="com.xiaomi.push.id" android:value="YOUR_XIAOMI_APP_ID" />
-      <meta-data android:name="com.xiaomi.push.key" android:value="YOUR_XIAOMI_APP_KEY" />
+      <meta-data android:name="com.xiaomi.push.id" android:value="id=YOUR_XIAOMI_APP_ID" />
+      <meta-data android:name="com.xiaomi.push.key" android:value="id=YOUR_XIAOMI_APP_KEY" />
 
       <!-- 魅族推送 -->
-      <meta-data android:name="com.meizu.push.id" android:value="YOUR_MEIZU_APP_ID" />
-      <meta-data android:name="com.meizu.push.key" android:value="YOUR_MEIZU_APP_KEY" />
+      <meta-data android:name="com.meizu.push.id" android:value="id=YOUR_MEIZU_APP_ID" />
+      <meta-data android:name="com.meizu.push.key" android:value="id=YOUR_MEIZU_APP_KEY" />
 
       <!-- FCM 推送 -->
-      <meta-data android:name="com.gcm.push.sendid" android:value="YOUR_FCM_SENDER_ID" />
-      <meta-data android:name="com.gcm.push.applicationid" android:value="YOUR_FCM_APP_ID" />
-      <meta-data android:name="com.gcm.push.projectid" android:value="YOUR_FCM_PROJECT_ID" />
-      <meta-data android:name="com.gcm.push.api.key" android:value="YOUR_FCM_API_KEY" />
+      <meta-data android:name="com.gcm.push.sendid" android:value="id=YOUR_FCM_SENDER_ID" />
+      <meta-data android:name="com.gcm.push.applicationid" android:value="id=YOUR_FCM_APP_ID" />
+      <meta-data android:name="com.gcm.push.projectid" android:value="id=YOUR_FCM_PROJECT_ID" />
+      <meta-data android:name="com.gcm.push.api.key" android:value="id=YOUR_FCM_API_KEY" />
 
       <!-- 阿里云推送消息接收器 -->
       <receiver android:name="com.aliyun.ams.push.AliyunPushMessageReceiver" android:exported="false">

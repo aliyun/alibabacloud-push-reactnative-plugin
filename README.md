@@ -102,11 +102,11 @@ allprojects {
 <meta-data android:name="com.huawei.hms.client.appid" android:value="appid=YOUR_HUAWEI_APP_ID" />
 
 <!-- VIVO 推送 -->
-<meta-data android:name="com.vivo.push.api_key" android:value="id=YOUR_VIVO_API_KEY" />
-<meta-data android:name="com.vivo.push.app_id" android:value="id=YOUR_VIVO_APP_ID" />
+<meta-data android:name="com.vivo.push.api_key" android:value="YOUR_VIVO_API_KEY" />
+<meta-data android:name="com.vivo.push.app_id" android:value="YOUR_VIVO_APP_ID" />
 
 <!-- 荣耀推送 -->
-<meta-data android:name="com.hihonor.push.app_id" android:value="id=YOUR_HIHONOR_APP_ID" />
+<meta-data android:name="com.hihonor.push.app_id" android:value="YOUR_HIHONOR_APP_ID" />
 
 <!-- OPPO 推送 -->
 <meta-data android:name="com.oppo.push.key" android:value="id=YOUR_OPPO_KEY" />
@@ -142,6 +142,10 @@ allprojects {
 
 **注意事项**：
 
+- **厂商配置前缀说明**：
+  - **华为**：`android:name="com.huawei.hms.client.appid"` 的 `android:value` 必须以 `appid=` 为前缀，例如 `appid=YOUR_HUAWEI_APP_ID`。华为 SDK 会直接从 `AndroidManifest.xml` 中读取该字段，格式为官方固定要求，请勿修改为其他前缀。
+  - **VIVO / 荣耀**：`android:name="com.vivo.push.*"`、`android:name="com.hihonor.push.app_id"` 由厂商 SDK 从 `AndroidManifest.xml` 中读取，值本身 **不需要额外前缀**，直接填写真实的 AppId / AppKey（如 `YOUR_VIVO_APP_ID`、`YOUR_HIHONOR_APP_ID`）。
+  - **其他厂商（OPPO / 小米 / 魅族 / FCM 等）**：由 **阿里云推送适配层** 从 `AndroidManifest.xml` 中读取配置。为避免纯数字的 `android:value` 在 Manifest 合并或编译过程中被转换为科学计数法字符串（例如 `123456789` 被转成 `1.23456789E8`）从而导致配置解析失败，推荐统一在实际数值前增加 `id=` 前缀，例如 `id=YOUR_OPPO_KEY`、`id=YOUR_XIAOMI_APP_ID`、`id=YOUR_FCM_SENDER_ID` 等。
 - **替换参数**：将 `YOUR_XXX` 占位符替换为各推送平台提供的实际参数（如 App ID、API Key 等）。请参考[阿里云推送官方文档](https://help.aliyun.com/document_detail/434677.html)获取具体配置方法。
 - **消息接收器**：本插件已内置 `AliyunPushMessageReceiver`，只需按上述模板添加 `<receiver>` 配置即可支持通知的接收和处理。
 - **权限检查**：确保 `AndroidManifest.xml` 已包含必要的网络和推送相关权限。
