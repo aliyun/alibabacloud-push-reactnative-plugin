@@ -62,7 +62,7 @@ export function addAlias(alias: string): Promise<PushResult> {
   return AliyunPush.addAlias(alias);
 }
 
-export function removeAlias(alias: string): Promise<PushResult> {
+export function removeAlias(alias: string | null): Promise<PushResult> {
   return AliyunPush.removeAlias(alias);
 }
 

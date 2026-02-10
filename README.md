@@ -414,23 +414,31 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
   addDeviceAlias();
   ```
 
-#### `removeAlias(alias: string): Promise<PushResult>`
+#### `removeAlias(alias: string | null): Promise<PushResult>`
 
-移除设备的指定别名。
+移除设备的指定别名。当传入 `null` 或空字符串时，将清除设备的所有别名。
 
 - **参数**：
-  - `alias`: `string` - 要移除的别名。
+  - `alias`: `string | null` - 要移除的别名。传入 `null` 或空字符串时清除所有别名。
 - **返回**：`Promise<PushResult>` - 移除别名的状态。
 - **示例**：
 
   ```typescript
   import { removeAlias } from 'aliyun-react-native-push';
 
+  // 移除指定别名
   async function removeDeviceAlias() {
     const result = await removeAlias('device-alias-001');
     console.log('移除别名结果:', result);
   }
   removeDeviceAlias();
+
+  // 清除所有别名
+  async function clearAllAliases() {
+    const result = await removeAlias(null); // 或 removeAlias('')
+    console.log('清除所有别名结果:', result);
+  }
+  clearAllAliases();
   ```
 
 #### `listAlias(): Promise<PushResult>`

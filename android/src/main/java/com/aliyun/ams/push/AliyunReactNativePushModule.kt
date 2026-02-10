@@ -102,12 +102,9 @@ class AliyunReactNativePushModule(
   }
 
   override fun removeAlias(alias: String?, promise: Promise?) {
-    if (alias.isNullOrEmpty()) {
-      resolveWithError(promise, CODE_PARAM_ILLEGAL, "alias can not be empty")
-    } else {
-      val pushService = PushServiceFactory.getCloudPushService()
-      pushService.removeAlias(alias, createCommonCallback(promise))
-    }
+    val pushService = PushServiceFactory.getCloudPushService()
+    // 当alias为null或空字符串时，传null给SDK以清除所有别名
+    pushService.removeAlias(alias?.takeIf { it.isNotEmpty() }, createCommonCallback(promise))
   }
 
   override fun listAlias(promise: Promise?) {

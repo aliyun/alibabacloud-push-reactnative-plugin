@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-02-10
+
+### Fixed
+
+- 修复 `removeAlias` 功能在Android端错误拦截空值的问题
+- Android端当传入 `null` 或空字符串时，现在会正确调用SDK的removeAlias方法清除所有别名
+- iOS端已经正确支持传入 `nil` 清除所有别名，无需修改
+
+### Changed
+
+- 更新 `removeAlias` 方法的TypeScript类型定义，参数类型从 `string` 改为 `string | null`
+- README文档中补充说明：传入 `null` 或空字符串时会清除设备的所有别名
+- 版本号从 1.0.3 升级至 1.0.4
+
 ## [1.0.3] - 2025-09-18
 
 ### Added

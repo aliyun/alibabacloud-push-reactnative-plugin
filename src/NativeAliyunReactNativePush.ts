@@ -11,7 +11,7 @@ export interface Spec extends TurboModule {
   bindAccount(account: string): Promise<PushResult>;
   unbindAccount(): Promise<PushResult>;
   addAlias(alias: string): Promise<PushResult>;
-  removeAlias(alias: string): Promise<PushResult>;
+  removeAlias(alias: string | null): Promise<PushResult>;
   listAlias(): Promise<PushResult>;
   bindTag(tags: string[], target: number, alias?: string): Promise<PushResult>;
   unbindTag(
