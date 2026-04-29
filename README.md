@@ -458,62 +458,56 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
   fetchAliases();
   ```
 
-#### `bindTag(tags: string[], target = kAliyunTargetDevice, alias?: string): Promise<PushResult>`
+#### `bindDeviceTag(tags: string[]): Promise<PushResult>` ⭐ 推荐
 
-为设备、账户或别名绑定标签，用于按照标签通知。
+为当前设备绑定标签，这是**推荐使用**的标签绑定方式。
 
 - **参数**：
   - `tags`: `string[]` - 要绑定的标签数组。
-  - `target`（可选）: `number` - 目标类型（`kAliyunTargetDevice`、`kAliyunTargetAccount` 或 `kAliyunTargetAlias`），默认为 `kAliyunTargetDevice`。
-  - `alias`（可选）: `string` - 目标为别名时的别名值。
 - **返回**：`Promise<PushResult>` - 绑定标签的状态。
 - **示例**：
 
   ```typescript
-  import { bindTag, kAliyunTargetDevice } from 'aliyun-react-native-push';
+  import { bindDeviceTag } from 'aliyun-react-native-push';
 
   async function bindTags() {
-    const result = await bindTag(['news', 'sports'], kAliyunTargetDevice);
+    const result = await bindDeviceTag(['news', 'sports']);
     console.log('绑定标签结果:', result);
   }
   bindTags();
   ```
 
-#### `unbindTag(tags: string[], target = kAliyunTargetDevice, alias?: string): Promise<PushResult>`
+#### `unbindDeviceTag(tags: string[]): Promise<PushResult>` ⭐ 推荐
 
-解除设备、账户或别名的指定标签。
+为当前设备解绑标签，这是**推荐使用**的标签解绑方式。
 
 - **参数**：
-  - `tags`: `string[]` - 要解除的标签数组。
-  - `target`（可选）: `number` - 目标类型，默认为 `kAliyunTargetDevice`。
-  - `alias`（可选）: `string` - 目标为别名时的别名值。
-- **返回**：`Promise<PushResult>` - 解除标签的状态。
+  - `tags`: `string[]` - 要解绑的标签数组。
+- **返回**：`Promise<PushResult>` - 解绑标签的状态。
 - **示例**：
 
   ```typescript
-  import { unbindTag, kAliyunTargetDevice } from 'aliyun-react-native-push';
+  import { unbindDeviceTag } from 'aliyun-react-native-push';
 
   async function unbindTags() {
-    const result = await unbindTag(['news'], kAliyunTargetDevice);
-    console.log('解除标签结果:', result);
+    const result = await unbindDeviceTag(['news']);
+    console.log('解绑标签结果:', result);
   }
   unbindTags();
   ```
 
-#### `listTags(target = kAliyunTargetDevice): Promise<PushResult>`
+#### `listDeviceTags(): Promise<PushResult>` ⭐ 推荐
 
-列出指定目标关联的所有标签。
+查询当前设备绑定的所有标签，这是**推荐使用**的标签查询方式。
 
-- **参数**：
-  - `target`（可选）: `number` - 目标类型，默认为 `kAliyunTargetDevice`。
 - **返回**：`Promise<PushResult>` - 包含 `tagsList` 字段（以逗号拼接成字符串形式返回标签列表）。
 - **示例**：
 
   ```typescript
-  import { listTags, kAliyunTargetDevice } from 'aliyun-react-native-push';
+  import { listDeviceTags } from 'aliyun-react-native-push';
 
   async function fetchTags() {
-    const result = await listTags(kAliyunTargetDevice);
+    const result = await listDeviceTags();
     console.log('标签列表:', result.tagsList);
   }
   fetchTags();
@@ -1064,12 +1058,6 @@ type PushCallback = (event: any) => void;
 
 > 详细的原生SDK错误码请参考阿里云文档：[Android](https://help.aliyun.com/document_detail/434686.html), [iOS](https://help.aliyun.com/document_detail/434705.html)
 
-#### 标签目标类型
-
-- `kAliyunTargetDevice = 1`: 设备目标。
-- `kAliyunTargetAccount = 2`: 账户目标。
-- `kAliyunTargetAlias = 3`: 别名目标。
-
 #### 类型定义
 
 - **PushResult**:
@@ -1078,7 +1066,7 @@ type PushCallback = (event: any) => void;
     code: string; // 状态码
     errorMsg?: string; // 错误信息（失败时提供）
     aliasList?: string; // 别名列表（listAlias 返回）
-    tagsList?: string; // 标签列表（listTags 返回）
+    tagsList?: string; // 标签列表（listDeviceTags 返回）
   }
   ```
 - **AliyunPushLogLevel**:

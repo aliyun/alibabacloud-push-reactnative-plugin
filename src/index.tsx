@@ -70,24 +70,90 @@ export function listAlias(): Promise<PushResult> {
   return AliyunPush.listAlias();
 }
 
+/**
+ * 绑定标签（已废弃，建议使用 bindDeviceTag）
+ * @deprecated 该方法允许绑定账号或别名维度的标签，未来将仅支持设备维度。
+ * 请使用 bindDeviceTag 替代。非设备维度的标签绑定仅对白名单用户开放。
+ * @param tags 标签列表
+ * @param target 目标类型：1-设备，2-账号，3-别名
+ * @param alias 别名（当 target 为别名时需要）
+ */
 export function bindTag(
   tags: string[],
   target = kAliyunTargetDevice,
   alias?: string
 ): Promise<PushResult> {
+  if (target !== kAliyunTargetDevice) {
+    console.warn(
+      '[AliyunPush] bindTag with non-device target is deprecated and will be restricted to whitelist users only. Please use bindDeviceTag for device-level tags.'
+    );
+  }
   return AliyunPush.bindTag(tags, target, alias);
 }
 
+/**
+ * 解绑标签（已废弃，建议使用 unbindDeviceTag）
+ * @deprecated 该方法允许解绑账号或别名维度的标签，未来将仅支持设备维度。
+ * 请使用 unbindDeviceTag 替代。非设备维度的标签解绑仅对白名单用户开放。
+ * @param tags 标签列表
+ * @param target 目标类型：1-设备，2-账号，3-别名
+ * @param alias 别名（当 target 为别名时需要）
+ */
 export function unbindTag(
   tags: string[],
   target = kAliyunTargetDevice,
   alias?: string
 ): Promise<PushResult> {
+  if (target !== kAliyunTargetDevice) {
+    console.warn(
+      '[AliyunPush] unbindTag with non-device target is deprecated and will be restricted to whitelist users only. Please use unbindDeviceTag for device-level tags.'
+    );
+  }
   return AliyunPush.unbindTag(tags, target, alias);
 }
 
+/**
+ * 查询标签列表（已废弃，建议使用 listDeviceTags）
+ * @deprecated 该方法允许查询账号或别名维度的标签，未来将仅支持设备维度。
+ * 请使用 listDeviceTags 替代。非设备维度的标签查询仅对白名单用户开放。
+ * @param target 目标类型：1-设备，2-账号，3-别名
+ */
 export function listTags(target = kAliyunTargetDevice): Promise<PushResult> {
+  if (target !== kAliyunTargetDevice) {
+    console.warn(
+      '[AliyunPush] listTags with non-device target is deprecated and will be restricted to whitelist users only. Please use listDeviceTags for device-level tags.'
+    );
+  }
   return AliyunPush.listTags(target);
+}
+
+/**
+ * 绑定设备标签（标准接口）
+ * 为当前设备绑定一个或多个标签。这是推荐使用的标签绑定方式。
+ * @param tags 标签列表
+ * @returns Promise<PushResult>
+ */
+export function bindDeviceTag(tags: string[]): Promise<PushResult> {
+  return AliyunPush.bindTag(tags, kAliyunTargetDevice);
+}
+
+/**
+ * 解绑设备标签（标准接口）
+ * 为当前设备解绑一个或多个标签。这是推荐使用的标签解绑方式。
+ * @param tags 标签列表
+ * @returns Promise<PushResult>
+ */
+export function unbindDeviceTag(tags: string[]): Promise<PushResult> {
+  return AliyunPush.unbindTag(tags, kAliyunTargetDevice);
+}
+
+/**
+ * 查询设备标签列表（标准接口）
+ * 查询当前设备绑定的所有标签。这是推荐使用的标签查询方式。
+ * @returns Promise<PushResult>
+ */
+export function listDeviceTags(): Promise<PushResult> {
+  return AliyunPush.listTags(kAliyunTargetDevice);
 }
 
 export function bindPhoneNumber(phone: string): Promise<PushResult> {
