@@ -458,7 +458,66 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
   fetchAliases();
   ```
 
-#### `bindTag(tags: string[], target = kAliyunTargetDevice, alias?: string): Promise<PushResult>`
+#### `bindDeviceTag(tags: string[]): Promise<PushResult>` ⭐ 推荐
+
+为当前设备绑定标签，这是**推荐使用**的标签绑定方式。
+
+- **参数**：
+  - `tags`: `string[]` - 要绑定的标签数组。
+- **返回**：`Promise<PushResult>` - 绑定标签的状态。
+- **示例**：
+
+  ```typescript
+  import { bindDeviceTag } from 'aliyun-react-native-push';
+
+  async function bindTags() {
+    const result = await bindDeviceTag(['news', 'sports']);
+    console.log('绑定标签结果:', result);
+  }
+  bindTags();
+  ```
+
+#### `unbindDeviceTag(tags: string[]): Promise<PushResult>` ⭐ 推荐
+
+为当前设备解绑标签，这是**推荐使用**的标签解绑方式。
+
+- **参数**：
+  - `tags`: `string[]` - 要解绑的标签数组。
+- **返回**：`Promise<PushResult>` - 解绑标签的状态。
+- **示例**：
+
+  ```typescript
+  import { unbindDeviceTag } from 'aliyun-react-native-push';
+
+  async function unbindTags() {
+    const result = await unbindDeviceTag(['news']);
+    console.log('解绑标签结果:', result);
+  }
+  unbindTags();
+  ```
+
+#### `listDeviceTags(): Promise<PushResult>` ⭐ 推荐
+
+查询当前设备绑定的所有标签，这是**推荐使用**的标签查询方式。
+
+- **返回**：`Promise<PushResult>` - 包含 `tagsList` 字段（以逗号拼接成字符串形式返回标签列表）。
+- **示例**：
+
+  ```typescript
+  import { listDeviceTags } from 'aliyun-react-native-push';
+
+  async function fetchTags() {
+    const result = await listDeviceTags();
+    console.log('标签列表:', result.tagsList);
+  }
+  fetchTags();
+  ```
+
+---
+
+#### `bindTag(tags: string[], target = kAliyunTargetDevice, alias?: string): Promise<PushResult>` ⚠️ 已废弃
+
+> **⚠️ 已废弃：** 该方法允许绑定账号或别名维度的标签，未来将仅支持设备维度。请使用 `bindDeviceTag` 替代。非设备维度的标签绑定仅对白名单用户开放，调用时会输出警告日志。
 
 为设备、账户或别名绑定标签，用于按照标签通知。
 
@@ -479,7 +538,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
   bindTags();
   ```
 
-#### `unbindTag(tags: string[], target = kAliyunTargetDevice, alias?: string): Promise<PushResult>`
+#### `unbindTag(tags: string[], target = kAliyunTargetDevice, alias?: string): Promise<PushResult>` ⚠️ 已废弃
+
+> **⚠️ 已废弃：** 该方法允许解绑账号或别名维度的标签，未来将仅支持设备维度。请使用 `unbindDeviceTag` 替代。非设备维度的标签解绑仅对白名单用户开放，调用时会输出警告日志。
 
 解除设备、账户或别名的指定标签。
 
@@ -500,7 +561,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
   unbindTags();
   ```
 
-#### `listTags(target = kAliyunTargetDevice): Promise<PushResult>`
+#### `listTags(target = kAliyunTargetDevice): Promise<PushResult>` ⚠️ 已废弃
+
+> **⚠️ 已废弃：** 该方法允许查询账号或别名维度的标签，未来将仅支持设备维度。请使用 `listDeviceTags` 替代。非设备维度的标签查询仅对白名单用户开放，调用时会输出警告日志。
 
 列出指定目标关联的所有标签。
 
