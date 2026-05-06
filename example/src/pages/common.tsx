@@ -17,8 +17,6 @@ const CommonPage: React.FC = () => {
   const [aliasRemoved, setAliasRemoved] = useState('');
   const [deviceTag, setDeviceTag] = useState('');
   const [deviceTagRemoved, setDeviceTagRemoved] = useState('');
-  const [accountTag, setAccountTag] = useState('');
-  const [accountTagRemoved, setAccountTagRemoved] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleBindAccount = async () => {
@@ -106,11 +104,9 @@ const CommonPage: React.FC = () => {
     setIsLoading(true);
     try {
       const result = await AliyunPush.listAlias();
-      if (
-        result.code === AliyunPush.kAliyunPushSuccessCode &&
-        result.aliasList
-      ) {
-        Alert.alert('成功', `别名列表: ${result.aliasList}`);
+      if (result.code === AliyunPush.kAliyunPushSuccessCode) {
+        const aliases = result.aliasList || '无';
+        Alert.alert('成功', `别名列表: ${aliases}`);
       } else {
         Alert.alert('错误', `查询别名列表失败: ${result.errorMsg}`);
       }
@@ -128,10 +124,7 @@ const CommonPage: React.FC = () => {
     }
     setIsLoading(true);
     try {
-      const result = await AliyunPush.bindTag(
-        [deviceTag],
-        AliyunPush.kAliyunTargetDevice
-      );
+      const result = await AliyunPush.bindDeviceTag([deviceTag]);
       if (result.code === AliyunPush.kAliyunPushSuccessCode) {
         Alert.alert('成功', `设备标签 ${deviceTag} 添加成功 👋`);
         setDeviceTag('');
@@ -139,7 +132,10 @@ const CommonPage: React.FC = () => {
         Alert.alert('错误', `添加设备标签失败: ${result.errorMsg}`);
       }
     } catch (error) {
-      Alert.alert('错误', '添加设备标签失败: 未知错误');
+      Alert.alert(
+        '错误',
+        `添加设备标签失败: ${error instanceof Error ? error.message : String(error)}`
+      );
     } finally {
       setIsLoading(false);
     }
@@ -152,10 +148,7 @@ const CommonPage: React.FC = () => {
     }
     setIsLoading(true);
     try {
-      const result = await AliyunPush.unbindTag(
-        [deviceTagRemoved],
-        AliyunPush.kAliyunTargetDevice
-      );
+      const result = await AliyunPush.unbindDeviceTag([deviceTagRemoved]);
       if (result.code === AliyunPush.kAliyunPushSuccessCode) {
         Alert.alert('成功', `设备标签 ${deviceTagRemoved} 删除成功 👋`);
         setDeviceTagRemoved('');
@@ -163,7 +156,10 @@ const CommonPage: React.FC = () => {
         Alert.alert('错误', `删除设备标签失败: ${result.errorMsg}`);
       }
     } catch (error) {
-      Alert.alert('错误', '删除设备标签失败: 未知错误');
+      Alert.alert(
+        '错误',
+        `删除设备标签失败: ${error instanceof Error ? error.message : String(error)}`
+      );
     } finally {
       setIsLoading(false);
     }
@@ -172,65 +168,18 @@ const CommonPage: React.FC = () => {
   const handleListDeviceTags = async () => {
     setIsLoading(true);
     try {
-      const result = await AliyunPush.listTags(AliyunPush.kAliyunTargetDevice);
-      if (
-        result.code === AliyunPush.kAliyunPushSuccessCode &&
-        result.tagsList
-      ) {
-        Alert.alert('成功', `设备标签列表: ${result.tagsList}`);
+      const result = await AliyunPush.listDeviceTags();
+      if (result.code === AliyunPush.kAliyunPushSuccessCode) {
+        const tags = result.tagsList || '无';
+        Alert.alert('成功', `设备标签列表: ${tags}`);
       } else {
         Alert.alert('错误', `查询设备标签列表失败: ${result.errorMsg}`);
       }
     } catch (error) {
-      Alert.alert('错误', '查询设备标签列表失败: 未知错误');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAddAccountTag = async () => {
-    if (!accountTag) {
-      Alert.alert('错误', '请输入要添加的账号标签');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const result = await AliyunPush.bindTag(
-        [accountTag],
-        AliyunPush.kAliyunTargetAccount
+      Alert.alert(
+        '错误',
+        `查询设备标签列表失败: ${error instanceof Error ? error.message : String(error)}`
       );
-      if (result.code === AliyunPush.kAliyunPushSuccessCode) {
-        Alert.alert('成功', `账号标签 ${accountTag} 添加成功 👋`);
-        setAccountTag('');
-      } else {
-        Alert.alert('错误', `添加账号标签失败: ${result.errorMsg}`);
-      }
-    } catch (error) {
-      Alert.alert('错误', '添加账号标签失败: 未知错误');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRemoveAccountTag = async () => {
-    if (!accountTagRemoved) {
-      Alert.alert('错误', '请输入要删除的账号标签');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const result = await AliyunPush.unbindTag(
-        [accountTagRemoved],
-        AliyunPush.kAliyunTargetAccount
-      );
-      if (result.code === AliyunPush.kAliyunPushSuccessCode) {
-        Alert.alert('成功', `账号标签 ${accountTagRemoved} 删除成功 👋`);
-        setAccountTagRemoved('');
-      } else {
-        Alert.alert('错误', `删除账号标签失败: ${result.errorMsg}`);
-      }
-    } catch (error) {
-      Alert.alert('错误', '删除账号标签失败: 未知错误');
     } finally {
       setIsLoading(false);
     }
@@ -328,35 +277,6 @@ const CommonPage: React.FC = () => {
           <CustomButton
             title="查询设备标签列表"
             onPress={handleListDeviceTags}
-            disabled={isLoading}
-          />
-        </SectionCard>
-
-        {/* 账号标签 */}
-        <Text style={styles.sectionHeader}>账号标签</Text>
-        <SectionCard>
-          <TextInput
-            style={styles.input}
-            onChangeText={setAccountTag}
-            value={accountTag}
-            placeholder="输入要添加的账号标签"
-            placeholderTextColor="#666666"
-          />
-          <CustomButton
-            title="添加账号标签"
-            onPress={handleAddAccountTag}
-            disabled={isLoading}
-          />
-          <TextInput
-            style={styles.input}
-            onChangeText={setAccountTagRemoved}
-            value={accountTagRemoved}
-            placeholder="输入要删除的账号标签"
-            placeholderTextColor="#666666"
-          />
-          <CustomButton
-            title="删除账号标签"
-            onPress={handleRemoveAccountTag}
             disabled={isLoading}
           />
         </SectionCard>
