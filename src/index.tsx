@@ -83,11 +83,6 @@ export function bindTag(
   target = kAliyunTargetDevice,
   alias?: string
 ): Promise<PushResult> {
-  if (target !== kAliyunTargetDevice) {
-    console.warn(
-      '[AliyunPush] bindTag with non-device target is deprecated and will be restricted to whitelist users only. Please use bindDeviceTag for device-level tags.'
-    );
-  }
   return AliyunPush.bindTag(tags, target, alias);
 }
 
@@ -104,11 +99,6 @@ export function unbindTag(
   target = kAliyunTargetDevice,
   alias?: string
 ): Promise<PushResult> {
-  if (target !== kAliyunTargetDevice) {
-    console.warn(
-      '[AliyunPush] unbindTag with non-device target is deprecated and will be restricted to whitelist users only. Please use unbindDeviceTag for device-level tags.'
-    );
-  }
   return AliyunPush.unbindTag(tags, target, alias);
 }
 
@@ -119,11 +109,6 @@ export function unbindTag(
  * @param target 目标类型：1-设备，2-账号，3-别名
  */
 export function listTags(target = kAliyunTargetDevice): Promise<PushResult> {
-  if (target !== kAliyunTargetDevice) {
-    console.warn(
-      '[AliyunPush] listTags with non-device target is deprecated and will be restricted to whitelist users only. Please use listDeviceTags for device-level tags.'
-    );
-  }
   return AliyunPush.listTags(target);
 }
 
@@ -134,7 +119,7 @@ export function listTags(target = kAliyunTargetDevice): Promise<PushResult> {
  * @returns Promise<PushResult>
  */
 export function bindDeviceTag(tags: string[]): Promise<PushResult> {
-  return AliyunPush.bindTag(tags, kAliyunTargetDevice);
+  return AliyunPush.bindTag(tags, kAliyunTargetDevice, undefined);
 }
 
 /**
@@ -144,7 +129,7 @@ export function bindDeviceTag(tags: string[]): Promise<PushResult> {
  * @returns Promise<PushResult>
  */
 export function unbindDeviceTag(tags: string[]): Promise<PushResult> {
-  return AliyunPush.unbindTag(tags, kAliyunTargetDevice);
+  return AliyunPush.unbindTag(tags, kAliyunTargetDevice, undefined);
 }
 
 /**

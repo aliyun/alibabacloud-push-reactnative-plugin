@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-05-06
+
+### Added
+
+- 新增设备标签专用接口 `bindDeviceTag`、`unbindDeviceTag`、`listDeviceTags`
+- 推荐使用这些新接口进行设备维度的标签操作，API 更简洁，无需手动指定 target 参数
+
+### Changed
+
+- 升级 AlicloudPush 依赖至 3.2.4+
+- 升级 AlicloudUTDID 至 1.6.1.1 — 修复 OpenUDID 导致的 App Store 审核拒绝问题
+- 升级 AlicloudELS 至 1.0.4 — 解决 iOS 编译告警和 compact unwind 问题
+- `bindTag`、`unbindTag`、`listTags` 方法标记为废弃（@deprecated）
+- 上述废弃方法仍保留运行时功能，仅在编译/IDE 阶段显示废弃警告
+
+### Fixed
+
+- 修复示例项目中标签列表为空时错误提示的问题
+- 修复示例项目中别名列表为空时错误提示的问题
+
 ## [1.0.4] - 2026-02-10
 
 ### Fixed
