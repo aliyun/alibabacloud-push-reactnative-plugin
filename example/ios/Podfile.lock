@@ -4,7 +4,7 @@ PODS:
     - AlicloudELS (= 1.0.4)
     - AlicloudUTDID (= 1.6.1.1)
   - AlicloudUTDID (1.6.1.1)
-  - AliyunReactNativePush (1.0.5):
+  - AliyunReactNativePush (1.1.1):
     - AlicloudPush (>= 3.2.4, ~> 3.2)
     - DoubleConversion
     - glog
@@ -1921,7 +1921,7 @@ SPEC CHECKSUMS:
   AlicloudELS: 775f227430b3477b75cc9dcdf3072a6ecfc9577e
   AlicloudPush: 902e627305ad8793bbf3acc2eb4e640917bbf078
   AlicloudUTDID: f0cde02afb754d7d3591d2a21bfe0cae8c89bce5
-  AliyunReactNativePush: 4b7a836dc3d1665dd372e5b5e9028d0b57c173ff
+  AliyunReactNativePush: 728f8d14f88da906127ee386a843a8b3e31c4c3e
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   fast_float: 06eeec4fe712a76acc9376682e4808b05ce978b6
@@ -1992,7 +1992,7 @@ SPEC CHECKSUMS:
   RNDeviceInfo: feea80a690d2bde1fe51461cf548039258bd03f2
   RNScreens: 0f01bbed9bd8045a8d58e4b46993c28c7f498f3c
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
-  Yoga: 66a9a23a82dd4081b393babe509967097759b3d6
+  Yoga: e14bad835e12b6c7e2260fc320bd00e0f4b45add
 
 PODFILE CHECKSUM: 53c2858d260e2b1dbe2cb241586177f025c729ae
 

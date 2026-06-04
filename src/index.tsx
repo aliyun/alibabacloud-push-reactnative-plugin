@@ -205,6 +205,10 @@ export function isIOSChannelOpened(): Promise<boolean> {
   return AliyunPush.isIosChannelOpened();
 }
 
+export function checkNotificationAuthorization(): Promise<boolean> {
+  return AliyunPush.checkNotificationAuthorization();
+}
+
 /**
  * ████████████████████████████████████
  * █ 以下为对callback事件封装
