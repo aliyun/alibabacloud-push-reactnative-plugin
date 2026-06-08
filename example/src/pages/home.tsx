@@ -199,6 +199,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     });
   };
 
+  const checkNotificationAuth = () => {
+    AliyunPush.checkNotificationAuthorization()
+      .then((authorized: boolean) => {
+        Alert.alert('通知权限状态', authorized ? '已授权' : '未授权');
+      })
+      .catch((error: any) => {
+        Alert.alert('查询失败', String(error));
+      });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -222,6 +232,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             onPress={getDeviceId}
             style={styles.actionButton}
           />
+          {Platform.OS === 'ios' && (
+            <CustomButton
+              title="检查iOS通知权限"
+              onPress={checkNotificationAuth}
+              style={styles.actionButton}
+            />
+          )}
           <SectionCard>
             <TouchableOpacity onPress={copyDeviceId} activeOpacity={0.7}>
               <Text style={styles.deviceIdText}>{deviceId}</Text>

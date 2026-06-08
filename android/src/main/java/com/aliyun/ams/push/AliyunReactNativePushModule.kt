@@ -385,6 +385,10 @@ class AliyunReactNativePushModule(
     resolveOnlyIos(promise)
   }
 
+  override fun checkNotificationAuthorization(promise: Promise?) {
+    resolveOnlyIos(promise)
+  }
+
   override fun addListener(eventName: String?) {
     eventEmitter.addListener(eventName)
   }

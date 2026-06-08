@@ -33,6 +33,7 @@ static NSString* const CODE_SUCCESS = @"10000";
 static NSString* const CODE_FAILED = @"10002";
 static NSString* const CODE_ONLY_ANDROID = @"10003";
 static NSString* const ERROR_ONLY_ANDROID = @"Only Support Android";
+static NSString* const ERROR_AUTHORIZATION_DENIED = @"Notification authorization denied";
 
 
 
@@ -125,13 +126,13 @@ static NSObject *_cacheLock = nil;
     @synchronized(_cacheLock) {
         NSArray *notificationsToSend = [_pendingNotifications copy];
         [_pendingNotifications removeAllObjects];
-        
+
         PushLogD(@"Flushing %lu cached notifications", (unsigned long)notificationsToSend.count);
-        
+
         for (NSDictionary *notification in notificationsToSend) {
             NSString *name = notification[@"name"];
             NSDictionary *userInfo = notification[@"userInfo"];
-            
+
             dispatch_async(dispatch_get_main_queue(), ^{
                 [[NSNotificationCenter defaultCenter] postNotificationName:name
                                                                     object:self
@@ -245,17 +246,17 @@ RCT_EXPORT_MODULE()
         _activeListeners = [[NSMutableSet alloc] init];
         _eventCacheLock = [[NSObject alloc] init];
         _hasStartedObserving = NO;
-        
+
         NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
         [center addObserver:self selector:@selector(innerHandleDeviceTokenRegistered:) name:kRemoteDeviceTokenRegistration object:nil];
         [center addObserver:self selector:@selector(innerHandleDeviceTokenRegisterError:) name:kRemoteDeviceTokenRegisterError object:nil];
         [center addObserver:self selector:@selector(innerHandleReceiveRemoteNotification:) name:kReceiveRemoteNotification object:nil];
         [center addObserver:self selector:@selector(innerHandleForegroundReceiveNotification:) name:kForegroundReceiveNotification object:nil];
         [center addObserver:self selector:@selector(innerHandleNotificationAction:) name:kNotificationAction object:nil];
-        
+
         // 通知AliyunPush有订阅者了
         [AliyunPush registerSubscriber];
-        
+
         PushLogD(@"AliyunReactNativePush module initialized");
     }
     return self;
@@ -289,11 +290,11 @@ RCT_EXPORT_MODULE()
 // 重写addListener方法
 - (void)addListener:(NSString *)eventName {
     [super addListener:eventName];
-    
+
     @synchronized(_eventCacheLock) {
         [_activeListeners addObject:eventName];
         PushLogD(@"Added listener for event: %@", eventName);
-        
+
         // 如果已经开始观察，立即处理该事件类型的缓存事件
         if (_hasStartedObserving) {
             [self processPendingEventsForEvent:eventName];
@@ -306,7 +307,7 @@ RCT_EXPORT_MODULE()
     NSArray *pendingEvents = _pendingEvents[eventName];
     if (pendingEvents.count > 0) {
         PushLogD(@"Processing %lu pending events for %@", (unsigned long)pendingEvents.count, eventName);
-        
+
         for (id eventBody in pendingEvents) {
             id bodyToSend = ([eventBody isKindOfClass:[NSNull class]]) ? nil : eventBody;
             [super sendEventWithName:eventName body:bodyToSend];
@@ -335,13 +336,13 @@ RCT_EXPORT_MODULE()
             if (!_pendingEvents[eventName]) {
                 _pendingEvents[eventName] = [[NSMutableArray alloc] init];
             }
-            
+
             // 限制每个事件类型的缓存数量
             NSMutableArray *eventQueue = _pendingEvents[eventName];
             if (eventQueue.count >= 50) {
                 [eventQueue removeObjectAtIndex:0]; // 移除最早的事件
             }
-            
+
             [eventQueue addObject:body ?: [NSNull null]];
             PushLogD(@"Cached event: %@, total cached: %lu", eventName, (unsigned long)eventQueue.count);
         }
@@ -466,16 +467,25 @@ RCT_EXPORT_MODULE()
 }
 
 - (void)initPush:(NSString *)appKey appSecret:(NSString *)appSecret resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
-    [self registerAPNs];
-    [self registerAliyunElsChannelMessageAndEvent];
-    
-    [CloudPushSDK startWithAppkey:appKey
-                        appSecret:appSecret
-                         callback:^(CloudPushCallbackResult *res) {
-        [self innerHandlePushCallbackResult:res
-                                    resolve:resolve
-                                    context:@"Init push"];
+    [self registerAPNsWithCompletion:^(BOOL granted, NSError *error) {
+        if (!granted) {
+            // 授权被拒绝/暂未授权，返回授权错误
+            NSMutableDictionary *dic = [NSMutableDictionary dictionary];
+            [dic setValue:ERROR_AUTHORIZATION_DENIED forKey:@"error"];
+            [self sendEventWithName:kOnRegisterDeviceTokenFailed body:dic];
+            PushLogD(@"Notification authorization denied");
+        }
     }];
+
+  [self registerAliyunElsChannelMessageAndEvent];
+
+  [CloudPushSDK startWithAppkey:appKey
+                      appSecret:appSecret
+                       callback:^(CloudPushCallbackResult *res) {
+      [self innerHandlePushCallbackResult:res
+                                  resolve:resolve
+                                  context:@"Init push"];
+  }];
 }
 
 - (void)isAndroidNotificationEnabled:(NSString *)id resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject { 
@@ -601,6 +611,25 @@ RCT_EXPORT_MODULE()
     [CloudPushSDK setLogLevel:level];
 }
 
+- (void)checkNotificationAuthorization:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
+    UNUserNotificationCenter *notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+
+    // 主动申请推送授权
+    [notificationCenter requestAuthorizationWithOptions:UNAuthorizationOptionAlert | UNAuthorizationOptionBadge | UNAuthorizationOptionSound completionHandler:^(BOOL granted, NSError * _Nullable error) {
+        if (granted) {
+            PushLogD(@"User granted notification authorization with required permissions");
+            resolve(@(YES));
+        } else {
+            if (error) {
+                PushLogE(@"Authorization failed with error: %@", error.localizedDescription);
+            } else {
+                PushLogE(@"User denied notification authorization");
+            }
+            resolve(@(NO));
+        }
+    }];
+}
+
 
 #pragma mark - SDK内部用于异步处理通知回调、推送令牌的相关方法
 
@@ -640,7 +669,7 @@ RCT_EXPORT_MODULE()
 - (void)innerHandleReceiveRemoteNotification: (NSNotification *) notification {
     NSDictionary *userInfo = notification.userInfo[@"notification"];
     AliyunPushRemoteNotificationCallback completionHandler = notification.userInfo[@"completionHandler"];
-    
+
     [CloudPushSDK sendNotificationAck:userInfo];
     [self sendEventWithName:kOnNotification body:userInfo];
 
@@ -698,7 +727,7 @@ RCT_EXPORT_MODULE()
         PushLogD(@"Notification dismissed.");
         [self sendEventWithName:kOnNotificationRemoved body:response.notification.request.content.userInfo];
     }
-    
+
     AliyunPushNotificationActionCallback completionHandler = notification.userInfo[@"completionHandler"];
     if (completionHandler != nil) {
         completionHandler();
@@ -710,7 +739,7 @@ RCT_EXPORT_MODULE()
     UNNotificationRequest *request = notification.request;
     UNNotificationContent *content = request.content;
     NSDictionary *userInfo = content.userInfo;
-    
+
     // 通知角标数清0
     [UIApplication sharedApplication].applicationIconBadgeNumber = 0;
     //  同步角标数到服务端
@@ -721,7 +750,7 @@ RCT_EXPORT_MODULE()
             PushLogE(@"Failed to sync badge number to 0 with Aliyun Push Service. Error: %@", res.error.localizedDescription ?: @"Unknown error");
         }
     }];
-    
+
     // 通知打开回执上报
     [CloudPushSDK sendNotificationAck:userInfo];
     [self sendEventWithName:kOnNotification body:userInfo];
@@ -734,8 +763,8 @@ RCT_EXPORT_MODULE()
 // 内部工具方法
 // ---------------------------------------------
 
-// 请求通知权限并在得到授权后向APNs注册，获取deviceToken
--(void)registerAPNs {
+// 请求通知权限的内部方法，支持回调
+-(void)registerAPNsWithCompletion:(void (^)(BOOL granted, NSError *error))completionHandler {
     UNUserNotificationCenter *_notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
     [_notificationCenter requestAuthorizationWithOptions:UNAuthorizationOptionAlert | UNAuthorizationOptionBadge | UNAuthorizationOptionSound completionHandler:^(BOOL granted, NSError * _Nullable error) {
         if (granted) {
@@ -746,10 +775,15 @@ RCT_EXPORT_MODULE()
             });
         } else {
             if (error) {
-                PushLogD(@"Authorization failed with error: %@", error.localizedDescription);
+                PushLogE(@"Authorization failed with error: %@", error.localizedDescription);
             } else {
-                PushLogD(@"User denied notification authorization");
+                PushLogE(@"User denied notification authorization");
             }
+        }
+
+        // 调用完成回调
+        if (completionHandler) {
+            completionHandler(granted, error);
         }
     }];
 }
@@ -777,12 +811,12 @@ RCT_EXPORT_MODULE()
     NSDictionary *data = notification.object;
     NSString *title = data[@"title"];
     NSString *body = data[@"content"];
-    
+
     NSDictionary *eventBody = @{
         @"title": title ?: @"",
         @"body": body ?: @""
     };
-    
+
     PushLogD(@"Aliyun Message received - Title: %@, Body: %@", title, body);
     [self sendEventWithName:kOnMessage body:eventBody];
 }

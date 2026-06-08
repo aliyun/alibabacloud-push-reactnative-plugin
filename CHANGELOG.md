@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-06-04
+
+### Added
+
+- 新增 `checkNotificationAuthorization()` 接口，支持主动检查 iOS 通知权限授权状态
+- README 文档 iOS 专用接口部分补充 `checkNotificationAuthorization` API 说明
+
+### Changed
+
+- iOS `initPush` 在 APNs 授权被拒/暂未授权时通过 `onRegisterDeviceTokenFailed` 事件回调通知
+
 ## [1.1.0] - 2026-05-06
 
 ### Added

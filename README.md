@@ -861,6 +861,28 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
   checkChannelStatus();
   ```
 
+#### `checkNotificationAuthorization(): Promise<boolean>`
+
+检查 iOS 通知权限授权状态。如果用户尚未做出选择，会触发系统授权弹窗。
+
+- **返回**：`Promise<boolean>` - 用户是否已授权通知权限（`true` 为已授权，`false` 为未授权）。
+- **注意**：仅 iOS 可用。
+- **示例**：
+
+  ```typescript
+  import { checkNotificationAuthorization } from 'aliyun-react-native-push';
+
+  async function checkPermission() {
+    const authorized = await checkNotificationAuthorization();
+    if (authorized) {
+      console.log('通知权限已授权');
+    } else {
+      console.log('通知权限未授权');
+    }
+  }
+  checkPermission();
+  ```
+
 ### 6.5 回调事件处理
 
 所有回调函数接收一个类型为 `any` 的 `event` 参数，包含平台特定的通知或消息数据。回调函数需符合 `PushCallback` 类型：

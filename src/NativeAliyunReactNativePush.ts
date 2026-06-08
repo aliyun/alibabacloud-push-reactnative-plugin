@@ -43,6 +43,7 @@ export interface Spec extends TurboModule {
   showIosNoticeWhenForeground(enable: boolean): Promise<PushResult>;
   getIosApnsDeviceToken(): Promise<string>;
   isIosChannelOpened(): Promise<boolean>;
+  checkNotificationAuthorization(): Promise<boolean>;
 
   // EventEmitter need
   addListener(eventName: string): void;
